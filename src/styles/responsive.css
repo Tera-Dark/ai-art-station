@@ -1,0 +1,470 @@
+/* ==================== 响应式设计 - 黑白灰极简风格 ==================== */
+
+/* 作品网格响应式 */
+@media (max-width: 1024px) {
+  .artwork-grid {
+    column-count: 3;
+  }
+}
+
+@media (max-width: 768px) {
+  .artwork-grid {
+    column-count: 2;
+  }
+  
+  /* 导航栏 */
+  .nav {
+    padding: 0 16px;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .main {
+    padding: 32px 16px;
+  }
+
+  /* 筛选标签 */
+  .filter-tags {
+    gap: 8px;
+  }
+
+  /* 认证模态框 */
+  .auth-modal {
+    padding: 24px;
+  }
+  
+  /* 页面头部 */
+  .hero-title, .hero-title-large {
+    font-size: 32px;
+  }
+  
+  .hero-subtitle, .hero-subtitle-detailed {
+    font-size: 16px;
+  }
+  
+  .icon-gradient, .hero-icon-large {
+    font-size: 48px;
+  }
+  
+  .hero-stats {
+    gap: 40px;
+  }
+  
+  .hero-stats .stat-number {
+    font-size: 24px;
+  }
+  
+  /* 模型网格 */
+  .models-grid {
+    grid-template-columns: 1fr;
+    gap: 1px;
+  }
+  
+  /* 统计网格 */
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1px;
+  }
+  
+  /* 标签页 */
+  .tabs-wrapper {
+    flex-direction: column;
+  }
+  
+  .tab-button.modern {
+    border-right: none;
+    border-bottom: 1px solid #e5e5e5;
+  }
+  
+  .tab-button.modern:last-child {
+    border-bottom: none;
+  }
+  
+  /* 节标题 */
+  .section-header-modern {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  /* 头像区域 */
+  .avatar-section {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  /* 表单网格 */
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  
+  /* 个人资料页面导航 */
+  .profile-nav {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  
+  .nav-title {
+    font-size: 16px;
+  }
+  
+  .nav-back-button span:last-child,
+  .nav-signout-button span:last-child {
+    display: none;
+  }
+  
+  /* 个人资料页面内容 */
+  .profile-page-modern {
+    padding: 32px 20px;
+  }
+  
+  .profile-header-card,
+  .profile-form-card {
+    padding: 32px 24px;
+  }
+
+  /* 作品卡片 */
+  .artwork-card {
+    border-radius: 8px;
+  }
+
+  .artwork-info {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .artwork-title {
+    font-size: 14px;
+  }
+
+  .artwork-stats {
+    gap: 12px;
+  }
+
+  .artwork-overlay {
+    background: rgba(0, 0, 0, 0.7);
+  }
+
+  /* 图片详情模态框 */
+  .modern-container {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    border-radius: 0;
+    flex-direction: column;
+  }
+
+  .modern-image-section {
+    flex: none;
+    height: 60vh;
+    padding: 16px;
+  }
+
+  .modern-detail-panel {
+    min-width: auto;
+    max-width: none;
+    height: 40vh;
+  }
+
+  .panel-header {
+    padding: 16px;
+  }
+
+  .author-section {
+    padding: 16px;
+  }
+
+  .artwork-info {
+    padding: 16px;
+  }
+
+  .interaction-bar {
+    padding: 12px 16px;
+    min-height: 64px;
+  }
+
+  .action-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+@media (max-width: 480px) {
+  .artwork-grid {
+    column-count: 1;
+  }
+
+  /* 容器 */
+  .container {
+    padding: 0 16px;
+  }
+
+  /* 页面头部 */
+  .hero-section {
+    padding: 50px 0;
+    margin: 0 -16px 30px -16px;
+  }
+
+  .hero-title {
+    font-size: 2.2rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+    margin-bottom: 40px;
+  }
+
+  .cta-button {
+    padding: 14px 28px;
+    font-size: 0.85rem;
+  }
+
+  /* 筛选标签 */
+  .filter-container {
+    gap: 8px;
+    overflow-x: auto;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 16px;
+  }
+
+  .filter-tag {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  /* 空状态 */
+  .empty-state {
+    padding: 80px 20px;
+  }
+
+  /* 页面头部 */
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .filter-tag {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+
+  /* 作品卡片底部 */
+  .artwork-footer-modern {
+    padding-top: 8px;
+  }
+
+  .author-info-modern {
+    gap: 8px;
+  }
+
+  .author-avatar-modern {
+    width: 24px;
+    height: 24px;
+  }
+
+  .author-name-modern {
+    font-size: 12px;
+  }
+
+  .artwork-meta-modern {
+    font-size: 10px;
+    gap: 3px;
+  }
+
+  .avatar-placeholder-modern {
+    font-size: 9px;
+  }
+
+  /* 上传模态框 */
+  .upload-content {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .upload-modal {
+    padding: 16px;
+  }
+
+  /* 收藏页面 */
+  .favorites-header {
+    padding: 24px 0;
+  }
+
+  .header-main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .header-info {
+    gap: 16px;
+  }
+
+  .header-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .header-text h1 {
+    font-size: 28px;
+  }
+
+  .header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .filter-section-modern {
+    padding: 20px;
+  }
+
+  .favorites-empty-state,
+  .empty-filter-state {
+    padding: 60px 20px;
+  }
+
+  .empty-state-icon {
+    width: 64px;
+    height: 64px;
+  }
+
+  /* 设置页面 */
+  .profile-content,
+  .settings-content {
+    gap: 24px;
+  }
+
+  .form-section,
+  .settings-section {
+    padding: 16px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .setting-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .theme-options {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* 超大屏幕优化 */
+@media (min-width: 1440px) {
+  .artwork-grid {
+    column-count: 5;
+  }
+  
+  .models-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+  
+  .hero-title, .hero-title-large {
+    font-size: 56px;
+  }
+  
+  .section-title {
+    font-size: 36px;
+  }
+}
+
+/* 超宽屏幕优化 */
+@media (min-width: 1920px) {
+  .artwork-grid {
+    column-count: 6;
+  }
+  
+  .main {
+    max-width: 1400px;
+  }
+  
+  .nav {
+    max-width: 1400px;
+  }
+  
+  .search-container {
+    max-width: 1400px;
+  }
+}
+
+/* 打印样式 */
+@media print {
+  .header,
+  .search-header,
+  .nav-actions,
+  .action-buttons,
+  .filter-tags,
+  .upload-btn {
+    display: none !important;
+  }
+  
+  .main {
+    margin-top: 0;
+    padding: 20px;
+  }
+  
+  .artwork-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+  .filter-tag {
+    border-width: 2px;
+  }
+  
+  .action-button {
+    border: 1px solid currentColor;
+  }
+  
+  .artwork-card {
+    border: 1px solid #000;
+  }
+}
+
+/* 减少动画模式 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .action-button,
+  .filter-tag,
+  .nav-links a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  .artwork-overlay {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.3);
+  }
+} 
