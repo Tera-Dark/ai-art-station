@@ -60,6 +60,7 @@ const eslintConfig = [
       'out/**',
       'dist/**',
       'build/**',
+      'scripts/**',
       '*.config.js',
       '*.config.mjs',
     ],

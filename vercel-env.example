@@ -1,0 +1,30 @@
+# =============================================================================
+# AI Art Station - Vercel 环境变量配置示例
+# =============================================================================
+# 🚀 在 Vercel Dashboard > Settings > Environment Variables 中配置以下变量
+
+# =============================================================================
+# 🔑 必需配置 (Required)
+# =============================================================================
+
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+NEXT_PUBLIC_APP_URL=https://your-app-name.vercel.app
+
+# =============================================================================
+# 📸 图片上传配置 (推荐)
+# =============================================================================
+
+NEXT_PUBLIC_IMGBB_API_KEY=your-imgbb-api-key
+
+# =============================================================================
+# 🔐 可选配置 (Optional)
+# =============================================================================
+
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
+NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your-upload-preset
+CLOUDINARY_API_KEY=your-cloudinary-api-key
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
+NEXTAUTH_URL=https://your-app-name.vercel.app
+NEXTAUTH_SECRET=your-nextauth-secret-here 
