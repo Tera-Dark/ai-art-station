@@ -130,8 +130,10 @@ CREATE TABLE IF NOT EXISTS user_favorites (
     UNIQUE(user_id, artwork_id)
 );
 
+
+
 -- ====================================
--- 第三步：创建索引
+-- 第四步：创建索引
 -- ====================================
 
 -- 用户相关索引
@@ -158,7 +160,7 @@ CREATE INDEX IF NOT EXISTS user_favorites_user_id_idx ON user_favorites(user_id)
 CREATE INDEX IF NOT EXISTS user_favorites_artwork_id_idx ON user_favorites(artwork_id);
 
 -- ====================================
--- 第四步：启用RLS
+-- 第五步：启用RLS
 -- ====================================
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -171,7 +173,7 @@ ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_favorites ENABLE ROW LEVEL SECURITY;
 
 -- ====================================
--- 第五步：创建安全策略
+-- 第六步：创建安全策略
 -- ====================================
 
 -- 用户资料表策略
@@ -295,7 +297,7 @@ CREATE POLICY "Users can delete their own favorites" ON user_favorites
     FOR DELETE USING (auth.uid() = user_id);
 
 -- ====================================
--- 第六步：创建函数
+-- 第七步：创建函数
 -- ====================================
 
 -- 自动更新 updated_at 字段的函数
@@ -428,7 +430,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ====================================
--- 第七步：创建触发器
+-- 第八步：创建触发器
 -- ====================================
 
 -- 用户注册触发器
@@ -480,4 +482,72 @@ CREATE TRIGGER comment_likes_count_trigger
 
 SELECT '🎉 AI Art Station 数据库设置完成！' AS status,
        '✅ 所有表、索引、策略、函数、触发器已创建' AS details,
-       '🔧 包含用户注册修复和点赞冲突处理' AS fixes; 
+       '🔧 包含用户注册修复和点赞冲突处理' AS fixes;
+
+-- ====================================
+-- 第三步：修复 Supabase 关系查询问题
+-- ====================================
+
+-- 刷新 Supabase schema 缓存
+NOTIFY pgrst, 'reload schema';
+
+-- 确保所有表的统计信息是最新的
+ANALYZE profiles;
+ANALYZE artworks;
+ANALYZE comments;
+ANALYZE likes;
+
+-- 为了确保 Supabase 能正确识别关系，我们重新创建必要的注释
+COMMENT ON COLUMN artworks.user_id IS 'References auth.users.id and profiles.id (same value)';
+COMMENT ON COLUMN profiles.id IS 'References auth.users.id';
+
+-- 创建一个函数来获取作品及其用户信息
+CREATE OR REPLACE FUNCTION get_artworks_with_profiles()
+RETURNS TABLE (
+    id BIGINT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ,
+    title TEXT,
+    description TEXT,
+    prompt TEXT,
+    image_url TEXT,
+    tags TEXT[],
+    model TEXT,
+    steps INTEGER,
+    cfg_scale NUMERIC,
+    sampler TEXT,
+    seed BIGINT,
+    user_id UUID,
+    likes_count INTEGER,
+    views_count INTEGER,
+    comments_count INTEGER,
+    username TEXT,
+    avatar_url TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        a.id,
+        a.created_at,
+        a.updated_at,
+        a.title,
+        a.description,
+        a.prompt,
+        a.image_url,
+        a.tags,
+        a.model,
+        a.steps,
+        a.cfg_scale,
+        a.sampler,
+        a.seed,
+        a.user_id,
+        a.likes_count,
+        a.views_count,
+        a.comments_count,
+        p.username,
+        p.avatar_url
+    FROM artworks a
+    LEFT JOIN profiles p ON a.user_id = p.id
+    ORDER BY a.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER; 
