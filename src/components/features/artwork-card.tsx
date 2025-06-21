@@ -36,9 +36,9 @@ export function ArtworkCard({ artwork, onLike, onBookmark, onView }: ArtworkCard
           // 并行检查收藏和点赞状态
           const [isFavorited, isArtworkLiked] = await Promise.all([
             favoriteService.checkIsFavorited(user.id, artwork.id.toString()),
-            likeService.checkArtworkLiked(user.id, artwork.id.toString())
+            likeService.checkArtworkLiked(user.id, artwork.id.toString()),
           ])
-          
+
           setIsBookmarked(isFavorited)
           setIsLiked(isArtworkLiked)
         } catch (error) {
@@ -64,7 +64,7 @@ export function ArtworkCard({ artwork, onLike, onBookmark, onView }: ArtworkCard
     try {
       const newLikedState = !isLiked
       setIsLiked(newLikedState)
-      
+
       // 立即更新UI中的点赞数
       const newLikesCount = newLikedState ? likesCount + 1 : Math.max(0, likesCount - 1)
       setLikesCount(newLikesCount)

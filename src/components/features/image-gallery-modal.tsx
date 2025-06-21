@@ -47,7 +47,7 @@ export function ImageGalleryModal({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
-  
+
   // 图片缩放和移动状态
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -90,53 +90,62 @@ export function ImageGalleryModal({
   }, [isOpen, artwork, resetModalState])
 
   // 处理滚轮缩放
-  const handleWheel = useCallback((e: WheelEvent) => {
-    if (!isFullscreen || !imageContainerRef.current) return
-    
-    e.preventDefault()
-    
-    const container = imageContainerRef.current
-    const rect = container.getBoundingClientRect()
-    
-    // 鼠标相对于容器的位置
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
-    
-    const delta = e.deltaY * -0.001
-    const newScale = Math.min(Math.max(0.1, scale + delta), 5)
-    
-    if (newScale !== scale) {
-      // 计算缩放中心点
-      const scaleChange = newScale / scale
-      
-      setPosition(prev => ({
-        x: mouseX - (mouseX - prev.x) * scaleChange,
-        y: mouseY - (mouseY - prev.y) * scaleChange,
-      }))
-      
-      setScale(newScale)
-    }
-  }, [scale, isFullscreen])
+  const handleWheel = useCallback(
+    (e: WheelEvent) => {
+      if (!isFullscreen || !imageContainerRef.current) return
+
+      e.preventDefault()
+
+      const container = imageContainerRef.current
+      const rect = container.getBoundingClientRect()
+
+      // 鼠标相对于容器的位置
+      const mouseX = e.clientX - rect.left
+      const mouseY = e.clientY - rect.top
+
+      const delta = e.deltaY * -0.001
+      const newScale = Math.min(Math.max(0.1, scale + delta), 5)
+
+      if (newScale !== scale) {
+        // 计算缩放中心点
+        const scaleChange = newScale / scale
+
+        setPosition(prev => ({
+          x: mouseX - (mouseX - prev.x) * scaleChange,
+          y: mouseY - (mouseY - prev.y) * scaleChange,
+        }))
+
+        setScale(newScale)
+      }
+    },
+    [scale, isFullscreen]
+  )
 
   // 处理拖拽
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!isFullscreen) return
-    
-    setIsDragging(true)
-    setDragStart({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
-    })
-  }, [isFullscreen, position])
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isFullscreen) return
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (!isDragging) return
-    
-    setPosition({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    })
-  }, [isDragging, dragStart])
+      setIsDragging(true)
+      setDragStart({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y,
+      })
+    },
+    [isFullscreen, position]
+  )
+
+  const handleMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!isDragging) return
+
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      })
+    },
+    [isDragging, dragStart]
+  )
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false)
@@ -149,10 +158,10 @@ export function ImageGalleryModal({
       if (container) {
         container.addEventListener('wheel', handleWheel, { passive: false })
       }
-      
+
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
-      
+
       return () => {
         if (container) {
           container.removeEventListener('wheel', handleWheel)
@@ -161,6 +170,7 @@ export function ImageGalleryModal({
         document.removeEventListener('mouseup', handleMouseUp)
       }
     }
+    return undefined
   }, [isFullscreen, handleWheel, handleMouseMove, handleMouseUp])
 
   // 处理键盘事件
@@ -235,8 +245,6 @@ export function ImageGalleryModal({
     setIsBookmarked(!isBookmarked)
     // TODO: 实际的收藏API调用
   }
-
-
 
   const handleShare = async () => {
     if (navigator.share && artwork) {
@@ -368,7 +376,7 @@ export function ImageGalleryModal({
                 <X size={18} />
               </button>
             </div>
-            
+
             <div className='control-group center'>
               <button
                 className='control-btn'
@@ -386,9 +394,7 @@ export function ImageGalleryModal({
               >
                 <RotateCcw size={18} />
               </button>
-              <div className='zoom-info'>
-                {Math.round(scale * 100)}%
-              </div>
+              <div className='zoom-info'>{Math.round(scale * 100)}%</div>
               <button
                 className='control-btn'
                 onClick={zoomIn}
@@ -398,9 +404,13 @@ export function ImageGalleryModal({
                 <ZoomIn size={18} />
               </button>
             </div>
-            
+
             <div className='control-group right'>
-              <button className='control-btn download-btn' onClick={handleDownload} title='下载图片'>
+              <button
+                className='control-btn download-btn'
+                onClick={handleDownload}
+                title='下载图片'
+              >
                 <Download size={18} />
                 <span>下载</span>
               </button>
@@ -408,7 +418,7 @@ export function ImageGalleryModal({
           </div>
 
           {/* 全屏图片容器 */}
-          <div 
+          <div
             ref={imageContainerRef}
             className='fullscreen-image-container'
             style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
@@ -428,7 +438,7 @@ export function ImageGalleryModal({
             )}
 
             {/* 全屏图片 */}
-            <div 
+            <div
               className='fullscreen-image-wrapper'
               style={{
                 transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
@@ -584,9 +594,7 @@ export function ImageGalleryModal({
 
             <div className='modal-details-content'>
               {/* 作品描述 */}
-              {artwork.description && (
-                <p className='artwork-description'>{artwork.description}</p>
-              )}
+              {artwork.description && <p className='artwork-description'>{artwork.description}</p>}
 
               {/* AI参数面板 */}
               {(artwork.model ||
@@ -595,13 +603,11 @@ export function ImageGalleryModal({
                 artwork.sampler ||
                 artwork.seed) && (
                 <div className='ai-parameters'>
-                  <div 
+                  <div
                     className='parameters-header'
                     onClick={() => setIsParametersExpanded(!isParametersExpanded)}
                   >
-                    <span className='parameters-title'>
-                      生成参数
-                    </span>
+                    <span className='parameters-title'>生成参数</span>
                     <div className={`parameters-toggle ${isParametersExpanded ? 'expanded' : ''}`}>
                       <ChevronDown size={16} />
                     </div>
@@ -694,8 +700,8 @@ export function ImageGalleryModal({
                   )}
                 </div>
 
-                                 {/* 评论列表 */}
-                 <CommentSection key={commentSectionKey} artworkId={artwork.id.toString()} />
+                {/* 评论列表 */}
+                <CommentSection key={commentSectionKey} artworkId={artwork.id.toString()} />
               </div>
             </div>
 
@@ -719,7 +725,11 @@ export function ImageGalleryModal({
               <button className='action-button' onClick={handleShare} title='分享'>
                 <Share2 size={14} />
               </button>
-              <button className='action-button download-action' onClick={handleDownload} title='下载'>
+              <button
+                className='action-button download-action'
+                onClick={handleDownload}
+                title='下载'
+              >
                 <Download size={14} />
               </button>
             </div>
