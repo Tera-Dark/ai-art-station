@@ -23,20 +23,24 @@ export const likeService: LikeService = {
 
   async likeArtwork(userId: string, artworkId: string): Promise<boolean> {
     try {
-      console.log('点赞作品:', { userId, artworkId })
-
-      const { error } = await supabase.from('likes').insert({
-        user_id: userId,
-        artwork_id: artworkId,
-        created_at: new Date().toISOString(),
-      })
+      // 使用 upsert 避免重复插入导致的冲突
+      const { error } = await supabase.from('likes').upsert(
+        {
+          user_id: userId,
+          artwork_id: artworkId,
+          created_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'user_id,artwork_id',
+          ignoreDuplicates: true,
+        }
+      )
 
       if (error) {
         console.error('点赞作品失败:', error)
         return false
       }
 
-      console.log('作品点赞成功')
       return true
     } catch (error) {
       console.error('点赞作品时出错:', error)
@@ -46,8 +50,6 @@ export const likeService: LikeService = {
 
   async unlikeArtwork(userId: string, artworkId: string): Promise<boolean> {
     try {
-      console.log('取消点赞作品:', { userId, artworkId })
-
       const { error } = await supabase
         .from('likes')
         .delete()
@@ -59,7 +61,6 @@ export const likeService: LikeService = {
         return false
       }
 
-      console.log('取消作品点赞成功')
       return true
     } catch (error) {
       console.error('取消点赞作品时出错:', error)
@@ -69,8 +70,6 @@ export const likeService: LikeService = {
 
   async checkArtworkLiked(userId: string, artworkId: string): Promise<boolean> {
     try {
-      console.log('检查作品点赞状态:', { userId, artworkId })
-
       if (!userId || !artworkId) {
         console.warn('检查作品点赞状态：参数无效', { userId, artworkId })
         return false
@@ -88,10 +87,7 @@ export const likeService: LikeService = {
         return false
       }
 
-      const isLiked = !!data
-      console.log('作品点赞状态检查完成:', { userId, artworkId, isLiked })
-
-      return isLiked
+      return !!data
     } catch (error) {
       console.error('检查作品点赞状态时出错:', error)
       return false
@@ -121,20 +117,24 @@ export const likeService: LikeService = {
 
   async likeComment(userId: string, commentId: string): Promise<boolean> {
     try {
-      console.log('点赞评论:', { userId, commentId })
-
-      const { error } = await supabase.from('comment_likes').insert({
-        user_id: userId,
-        comment_id: commentId,
-        created_at: new Date().toISOString(),
-      })
+      // 使用 upsert 避免重复插入导致的冲突
+      const { error } = await supabase.from('comment_likes').upsert(
+        {
+          user_id: userId,
+          comment_id: commentId,
+          created_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'user_id,comment_id',
+          ignoreDuplicates: true,
+        }
+      )
 
       if (error) {
         console.error('点赞评论失败:', error)
         return false
       }
 
-      console.log('评论点赞成功')
       return true
     } catch (error) {
       console.error('点赞评论时出错:', error)
@@ -144,8 +144,6 @@ export const likeService: LikeService = {
 
   async unlikeComment(userId: string, commentId: string): Promise<boolean> {
     try {
-      console.log('取消点赞评论:', { userId, commentId })
-
       const { error } = await supabase
         .from('comment_likes')
         .delete()
@@ -157,7 +155,6 @@ export const likeService: LikeService = {
         return false
       }
 
-      console.log('取消评论点赞成功')
       return true
     } catch (error) {
       console.error('取消点赞评论时出错:', error)
@@ -167,8 +164,6 @@ export const likeService: LikeService = {
 
   async checkCommentLiked(userId: string, commentId: string): Promise<boolean> {
     try {
-      console.log('检查评论点赞状态:', { userId, commentId })
-
       if (!userId || !commentId) {
         console.warn('检查评论点赞状态：参数无效', { userId, commentId })
         return false
@@ -186,10 +181,7 @@ export const likeService: LikeService = {
         return false
       }
 
-      const isLiked = !!data
-      console.log('评论点赞状态检查完成:', { userId, commentId, isLiked })
-
-      return isLiked
+      return !!data
     } catch (error) {
       console.error('检查评论点赞状态时出错:', error)
       return false
@@ -243,4 +235,4 @@ export const toggleArtworkLike = (userId: string, artworkId: string) =>
   likeService.toggleArtworkLike(userId, artworkId)
 
 export const toggleCommentLike = (userId: string, commentId: string) =>
-  likeService.toggleCommentLike(userId, commentId) 
+  likeService.toggleCommentLike(userId, commentId)

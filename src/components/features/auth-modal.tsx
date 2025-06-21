@@ -7,7 +7,7 @@ import { supabase } from '@/lib/services/supabase.service'
 interface AuthModalProps {
   isOpen: boolean
   onClose: () => void
-  onLoginSuccess: (user: any) => void // 暂时保留any，因为Supabase User类型可能不完全匹配
+  onLoginSuccess: (user: { id: string; email?: string }) => void // 修复any类型
 }
 
 export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
@@ -61,19 +61,48 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
           options: {
             data: {
               username: formData.username,
-              // 您可以在这里添加其他元数据，如头像URL
-              // avatar_url: `https://api.dicebear.com/8.x/initials/svg?seed=${formData.username}`
+              full_name: formData.username, // 使用用户名作为默认全名
+              display_name: formData.username,
             },
           },
         })
 
-        if (error) throw error
+        if (error) {
+          // 处理具体的错误类型
+          if (error.message.includes('User already registered')) {
+            throw new Error('该邮箱已被注册，请直接登录或使用其他邮箱')
+          } else if (error.message.includes('Invalid email')) {
+            throw new Error('邮箱格式不正确，请检查后重试')
+          } else if (error.message.includes('Password')) {
+            throw new Error('密码不符合要求，请设置6位以上的强密码')
+          } else if (error.message.includes('rate limit')) {
+            throw new Error('操作过于频繁，请稍后再试')
+          } else {
+            throw new Error(`注册失败：${error.message}`)
+          }
+        }
 
         if (data.user) {
-          // Supabase默认需要邮箱验证，这里为了简化，我们直接模拟登录成功
-          // 在生产环境中，您应该提示用户检查邮箱
-          alert('注册成功！请登录。')
-          setMode('login')
+          // 等待一下让后台触发器完成
+          await new Promise(resolve => setTimeout(resolve, 1000))
+
+          // 显示成功消息
+          setAuthError('注册成功！您可以立即开始使用。')
+
+          // 自动登录
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+            email: formData.email,
+            password: formData.password,
+          })
+
+          if (loginError) {
+            // 如果自动登录失败，提示手动登录
+            setAuthError('注册成功！请手动登录。')
+            setMode('login')
+          } else if (loginData.user) {
+            onLoginSuccess(loginData.user)
+            onClose()
+          }
         }
       } else {
         // 登录模式
@@ -82,15 +111,26 @@ export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {
           password: formData.password,
         })
 
-        if (error) throw error
+        if (error) {
+          // 处理登录错误
+          if (error.message.includes('Invalid login credentials')) {
+            throw new Error('邮箱或密码错误，请检查后重试')
+          } else if (error.message.includes('too many requests')) {
+            throw new Error('登录尝试过于频繁，请稍后再试')
+          } else {
+            throw new Error(`登录失败：${error.message}`)
+          }
+        }
 
         if (data.user) {
           onLoginSuccess(data.user)
           onClose()
         }
       }
-    } catch (error: any) {
-      setAuthError(error.message || '操作失败，请重试')
+    } catch (error: unknown) {
+      console.error('认证错误:', error)
+      const errorMessage = error instanceof Error ? error.message : '操作失败，请重试'
+      setAuthError(errorMessage)
     } finally {
       setLoading(false)
     }

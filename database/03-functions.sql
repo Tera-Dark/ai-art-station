@@ -26,14 +26,58 @@ $$ LANGUAGE plpgsql;
 -- 用户注册时自动创建 profile 的函数
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
+DECLARE
+    username_val text;
+    full_name_val text;
+    avatar_url_val text;
 BEGIN
-    INSERT INTO public.profiles (id, username, full_name, avatar_url)
-    VALUES (
-        new.id,
-        new.raw_user_meta_data->>'username',
-        new.raw_user_meta_data->>'full_name',
-        new.raw_user_meta_data->>'avatar_url'
-    );
+    -- 安全获取用户元数据
+    username_val := COALESCE(new.raw_user_meta_data->>'username', '');
+    full_name_val := COALESCE(new.raw_user_meta_data->>'full_name', '');
+    avatar_url_val := COALESCE(new.raw_user_meta_data->>'avatar_url', '');
+    
+    -- 如果用户名为空，生成默认用户名
+    IF username_val = '' OR username_val IS NULL THEN
+        username_val := 'user_' || substring(new.id::text from 1 for 8);
+    END IF;
+    
+    -- 处理可能的用户名冲突
+    BEGIN
+        INSERT INTO public.profiles (id, username, full_name, avatar_url, created_at, updated_at)
+        VALUES (
+            new.id,
+            username_val,
+            full_name_val,
+            avatar_url_val,
+            NOW(),
+            NOW()
+        );
+    EXCEPTION WHEN unique_violation THEN
+        -- 如果用户名冲突，添加随机后缀
+        INSERT INTO public.profiles (id, username, full_name, avatar_url, created_at, updated_at)
+        VALUES (
+            new.id,
+            username_val || '_' || floor(random() * 10000)::text,
+            full_name_val,
+            avatar_url_val,
+            NOW(),
+            NOW()
+        );
+    END;
+    
+    -- 同时创建用户设置
+    BEGIN
+        INSERT INTO public.user_settings (user_id, created_at, updated_at)
+        VALUES (new.id, NOW(), NOW());
+    EXCEPTION WHEN unique_violation THEN
+        -- 如果设置已存在，忽略错误
+        NULL;
+    END;
+    
+    RETURN new;
+EXCEPTION WHEN OTHERS THEN
+    -- 记录错误但不阻止用户注册
+    RAISE LOG 'Error creating profile for user %: %', new.id, SQLERRM;
     RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
