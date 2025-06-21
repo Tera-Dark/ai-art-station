@@ -5,6 +5,7 @@ import { X, Upload, Image as ImageIcon, Tag, FileText } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { Artwork } from '@/types/artwork'
 import { supabase } from '@/lib/services/supabase.service'
+import { createArtwork, updateArtwork } from '@/lib/services/artwork.service'
 import { storageConfig, supabaseConfig } from '@/lib/constants/config'
 
 const AI_MODELS = [
@@ -173,10 +174,10 @@ export function UploadModal({
         prompt: formData.prompt,
         description: formData.description,
         tags: tagsArray,
-        model: finalModel,
+        model: finalModel || null,
         steps: formData.steps,
         cfg_scale: formData.cfg_scale,
-        sampler: finalSampler,
+        sampler: finalSampler || null,
         seed: formData.seed,
         user_id: user.id,
       }
@@ -285,39 +286,27 @@ export function UploadModal({
 
       if (isEditMode && artworkToEdit) {
         // 更新模式
-        const { data: updatedArtwork, error: updateError } = await supabase
-          .from('artworks')
-          .update({ ...artworkData, image_url: imageUrl })
-          .match({ id: artworkToEdit.id })
-          .select(`*, profiles(username, avatar_url)`)
-          .single()
+        const updatedArtwork = await updateArtwork(artworkToEdit.id, {
+          ...artworkData,
+          image_url: imageUrl,
+        })
 
-        if (updateError) {
-          console.error('数据库更新错误:', updateError)
-          throw new Error(`作品更新失败: ${updateError.message}`)
+        if (!updatedArtwork) {
+          throw new Error('作品更新失败')
         }
 
-        if (updatedArtwork) {
-          console.log('作品更新成功:', updatedArtwork)
-          onUpdateSuccess(updatedArtwork as Artwork)
-        }
+        console.log('作品更新成功:', updatedArtwork)
+        onUpdateSuccess(updatedArtwork)
       } else {
         // 创建模式
-        const { data: newArtwork, error: insertError } = await supabase
-          .from('artworks')
-          .insert({ ...artworkData, image_url: imageUrl })
-          .select(`*, profiles(username, avatar_url)`)
-          .single()
+        const newArtwork = await createArtwork({ ...artworkData, image_url: imageUrl })
 
-        if (insertError) {
-          console.error('数据库插入错误:', insertError)
-          throw new Error(`数据写入失败: ${insertError.message}`)
+        if (!newArtwork) {
+          throw new Error('数据写入失败')
         }
 
-        if (newArtwork) {
-          console.log('作品创建成功:', newArtwork)
-          onUploadSuccess(newArtwork as Artwork)
-        }
+        console.log('作品创建成功:', newArtwork)
+        onUploadSuccess(newArtwork)
       }
 
       onClose()

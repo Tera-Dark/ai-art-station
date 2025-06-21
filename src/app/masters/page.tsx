@@ -7,8 +7,7 @@ import { usePathname } from 'next/navigation'
 import { UserMenu } from '@/components/layout/user-menu'
 import { useAuth } from '@/contexts/auth-context'
 import { AuthModal } from '@/components/features/auth-modal'
-import { User } from '@supabase/supabase-js'
-import { supabase } from '@/lib/services/supabase.service'
+import { getArtworks } from '@/lib/services/artwork.service'
 import { ArtworkGrid } from '@/components/features/artwork-grid'
 import { Artwork } from '@/types/artwork'
 
@@ -38,23 +37,9 @@ export default function MastersPage() {
 
       try {
         // 1. 获取所有作品及其创作者信息
-        const { data: artworksData, error: artworksError } = await supabase
-          .from('artworks')
-          .select(
-            `
-            *,
-            profiles (
-              id,
-              username,
-              avatar_url
-            )
-          `
-          )
-          .order('created_at', { ascending: false })
+        const artworksData = await getArtworks()
 
-        if (artworksError) throw artworksError
-
-        if (!artworksData) {
+        if (!artworksData || artworksData.length === 0) {
           setCreators([])
           return
         }
@@ -62,7 +47,7 @@ export default function MastersPage() {
         // 2. 按创作者分组，计算每个创作者的作品数和总点赞数
         const creatorsMap: Record<string, Creator> = {}
 
-        artworksData.forEach(artwork => {
+        artworksData.forEach((artwork: Artwork) => {
           if (!artwork.profiles || !artwork.user_id) return
 
           const creatorId = artwork.user_id
@@ -94,8 +79,9 @@ export default function MastersPage() {
           .slice(0, 20) // 只显示前20个热门创作者
 
         setCreators(creatorsArray)
-      } catch (err: any) {
-        setError(err.message || '获取创作者数据失败')
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : '获取创作者数据失败'
+        setError(errorMessage)
         console.error(err)
       } finally {
         setLoading(false)
@@ -113,7 +99,7 @@ export default function MastersPage() {
     setSelectedCreator(null)
   }
 
-  const handleLoginSuccess = (_loggedInUser: User) => {
+  const handleLoginSuccess = (_user: { id: string; email?: string }) => {
     setShowAuthModal(false)
   }
 

@@ -6,6 +6,7 @@ import { ArtworkGrid } from '@/components/features/artwork-grid'
 import { UploadModal } from '@/components/features/upload-modal'
 import { ImageGalleryModal } from '@/components/features/image-gallery-modal'
 import { Artwork } from '@/types/artwork'
+import { getArtworks } from '@/lib/services/artwork.service'
 import { supabase } from '@/lib/services/supabase.service'
 
 export default function Home() {
@@ -23,26 +24,10 @@ export default function Home() {
 
   const fetchArtworks = async () => {
     try {
-      const { data, error } = await supabase
-        .from('artworks')
-        .select(
-          `
-          *,
-          profiles (
-            username,
-            avatar_url
-          )
-        `
-        )
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('获取作品失败:', error)
-        return
-      }
+      const artworksData = await getArtworks()
 
       const artworksWithCounts = await Promise.all(
-        (data || []).map(async artwork => {
+        artworksData.map(async artwork => {
           // 获取点赞数
           const { count: likesCount } = await supabase
             .from('likes')

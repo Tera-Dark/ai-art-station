@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/header'
 import { ArtworkGrid } from '@/components/features/artwork-grid'
 import { UploadModal } from '@/components/features/upload-modal'
-import { AuthModal } from '@/components/features/auth-modal'
 import { ImageGalleryModal } from '@/components/features/image-gallery-modal'
+import { AuthModal } from '@/components/features/auth-modal'
 import { Artwork } from '@/types/artwork'
+import { getArtworks } from '@/lib/services/artwork.service'
 import { supabase } from '@/lib/services/supabase.service'
-import { User } from '@supabase/supabase-js'
 
 const AI_MODELS = [
   { id: 'all', name: '全部模型', icon: '🎨' },
@@ -37,26 +37,10 @@ export default function Explore() {
 
   const fetchArtworks = async () => {
     try {
-      const { data, error } = await supabase
-        .from('artworks')
-        .select(
-          `
-          *,
-          profiles (
-            username,
-            avatar_url
-          )
-        `
-        )
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('获取作品失败:', error)
-        return
-      }
+      const artworksData = await getArtworks()
 
       const artworksWithCounts = await Promise.all(
-        (data || []).map(async artwork => {
+        artworksData.map(async artwork => {
           // 获取点赞数
           const { count: likesCount } = await supabase
             .from('likes')
@@ -81,7 +65,7 @@ export default function Explore() {
       setArtworks(artworksWithCounts)
       setFilteredArtworks(artworksWithCounts)
     } catch (error) {
-      console.error('获取作品时出错:', error)
+      console.warn('获取作品时出错:', error)
     } finally {
       setLoading(false)
     }
@@ -142,7 +126,7 @@ export default function Explore() {
     setIsDetailModalOpen(true)
   }
 
-  const handleLoginSuccess = (_loggedInUser: User) => {
+  const handleLoginSuccess = (_user: { id: string; email?: string }) => {
     setShowAuthModal(false)
   }
 
@@ -239,18 +223,16 @@ export default function Explore() {
         <div className='artworks-section'>
           <div className='section-header'>
             <h2 className='section-title'>
-              {selectedModel === 'all' 
-                ? '全部作品' 
+              {selectedModel === 'all'
+                ? '全部作品'
                 : `${AI_MODELS.find(m => m.id === selectedModel)?.name} 作品`}
             </h2>
             <div className='results-info'>
               <span className='results-count'>{filteredArtworks.length} 件作品</span>
-              {searchQuery && (
-                <span className='search-info'>包含 &ldquo;{searchQuery}&rdquo;</span>
-              )}
+              {searchQuery && <span className='search-info'>包含 &ldquo;{searchQuery}&rdquo;</span>}
             </div>
           </div>
-          
+
           <ArtworkGrid artworks={filteredArtworks} onArtworkClick={handleArtworkClick} />
         </div>
       </div>

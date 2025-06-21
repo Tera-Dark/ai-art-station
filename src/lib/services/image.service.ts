@@ -6,7 +6,7 @@ export const cloudinaryConfig = {
 
 // ImgBB配置
 export const imgbbConfig = {
-  apiKey: process.env.NEXT_PUBLIC_IMGBB_API_KEY || '26a7e4f5d5f9c9f44eca9fc4d91656db', // 临时公共API密钥，仅用于演示
+  apiKey: process.env.NEXT_PUBLIC_IMGBB_API_KEY || '', // 移除硬编码密钥
 }
 
 // 图片变换参数

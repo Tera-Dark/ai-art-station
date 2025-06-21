@@ -6,7 +6,7 @@ import { ArtworkGrid } from '@/components/features/artwork-grid'
 
 import { UploadModal } from '@/components/features/upload-modal'
 import { Artwork } from '@/types/artwork'
-import { supabase } from '@/lib/services/supabase.service'
+import { getArtworksByUser } from '@/lib/services/artwork.service'
 import { useAuth } from '@/contexts/auth-context'
 import { useRouter } from 'next/navigation'
 import { Loader2, AlertCircle } from 'lucide-react'
@@ -41,25 +41,8 @@ export default function MyWorksPage() {
       setError(null)
 
       try {
-        const { data, error } = await supabase
-          .from('artworks')
-          .select(
-            `
-            *,
-            profiles (
-              username,
-              avatar_url
-            )
-          `
-          )
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-
-        if (error) throw error
-
-        if (data) {
-          setArtworks(data as Artwork[])
-        }
+        const artworksData = await getArtworksByUser(user.id)
+        setArtworks(artworksData)
       } catch (err: any) {
         setError(err.message || '获取作品失败')
         console.error(err)
@@ -145,7 +128,7 @@ export default function MyWorksPage() {
               </div>
               <h1 className='hero-title-large'>我的创作空间</h1>
               <p className='hero-subtitle-detailed'>管理您的AI艺术作品，展示创意成果</p>
-              
+
               {/* 统计信息卡片 */}
               <div className='stats-grid'>
                 <div className='stat-card modern'>
@@ -207,11 +190,13 @@ export default function MyWorksPage() {
                 <span className='tab-icon'>🕒</span>
                 <span>最近作品</span>
                 <span className='tab-count'>
-                  {artworks.filter(a => {
-                    const oneWeekAgo = new Date()
-                    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-                    return new Date(a.created_at) >= oneWeekAgo
-                  }).length}
+                  {
+                    artworks.filter(a => {
+                      const oneWeekAgo = new Date()
+                      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+                      return new Date(a.created_at) >= oneWeekAgo
+                    }).length
+                  }
                 </span>
               </button>
             </div>
@@ -240,7 +225,7 @@ export default function MyWorksPage() {
                 <span>正在加载作品...</span>
               </div>
             )}
-            
+
             {error && (
               <div className='status-card error'>
                 <AlertCircle className='status-icon' size={24} />
@@ -252,9 +237,9 @@ export default function MyWorksPage() {
             {!loading && !error && (
               <>
                 {filteredArtworks.length > 0 ? (
-                  <ArtworkGrid 
-                    artworks={filteredArtworks} 
-                    onArtworkClick={(artwork) => console.log('查看作品:', artwork)}
+                  <ArtworkGrid
+                    artworks={filteredArtworks}
+                    onArtworkClick={artwork => console.log('查看作品:', artwork)}
                   />
                 ) : (
                   <div className='empty-state-modern'>
