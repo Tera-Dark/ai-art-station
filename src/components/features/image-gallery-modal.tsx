@@ -20,7 +20,8 @@ import {
 import { Artwork } from '@/types/artwork'
 import { CommentSection } from './comment-section'
 import { useAuth } from '@/contexts/auth-context'
-import { supabase } from '@/lib/services/supabase.service'
+import { commentService } from '@/lib/services/comment.service'
+import { followService } from '@/lib/services/follow.service'
 
 interface ImageGalleryModalProps {
   artwork: Artwork | null
@@ -47,6 +48,8 @@ export function ImageGalleryModal({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const [isSubmittingComment, setIsSubmittingComment] = useState(false)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [isCheckingFollow, setIsCheckingFollow] = useState(false)
 
   // 图片缩放和移动状态
   const [scale, setScale] = useState(1)
@@ -85,9 +88,14 @@ export function ImageGalleryModal({
       if (artwork) {
         setLikesCount(artwork.likes_count || 0)
         setCommentCount(artwork.comments_count || 0)
+
+        // 检查关注状态
+        if (user && artwork.user_id && user.id !== artwork.user_id) {
+          followService.isFollowing(artwork.user_id).then(setIsFollowing)
+        }
       }
     }
-  }, [isOpen, artwork, resetModalState])
+  }, [isOpen, artwork, resetModalState, user])
 
   // 处理滚轮缩放
   const handleWheel = useCallback(
@@ -302,19 +310,14 @@ export function ImageGalleryModal({
 
     setIsSubmittingComment(true)
     try {
-      const insertData = {
-        artwork_id: Number(artwork.id),
-        user_id: user.id,
-        content: commentText.trim(),
-        parent_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
+      // 使用新的评论服务创建评论
+      const newComment = await commentService.createComment(
+        artwork.id.toString(),
+        user.id,
+        commentText.trim()
+      )
 
-      const { error } = await supabase.from('comments').insert(insertData)
-
-      if (error) {
-        console.error('提交评论失败:', error)
+      if (!newComment) {
         alert('提交评论失败，请重试')
         return
       }
@@ -350,6 +353,35 @@ export function ImageGalleryModal({
   const zoomOut = () => {
     const newScale = Math.max(scale - 0.1, 0.1)
     setScale(newScale)
+  }
+
+  const handleFollow = async () => {
+    if (!user || !artwork?.user_id) {
+      alert('请先登录后再关注用户')
+      return
+    }
+
+    if (user.id === artwork.user_id) {
+      return // 不能关注自己
+    }
+
+    setIsCheckingFollow(true)
+    try {
+      const success = isFollowing
+        ? await followService.unfollowUser(artwork.user_id)
+        : await followService.followUser(artwork.user_id)
+
+      if (success) {
+        setIsFollowing(!isFollowing)
+      } else {
+        alert('操作失败，请稍后重试')
+      }
+    } catch (error) {
+      console.error('关注操作失败:', error)
+      alert('操作失败，请稍后重试')
+    } finally {
+      setIsCheckingFollow(false)
+    }
   }
 
   return (
@@ -567,17 +599,27 @@ export function ImageGalleryModal({
                   {artwork.profiles?.avatar_url ? (
                     <img
                       src={artwork.profiles.avatar_url}
-                      alt={artwork.profiles.username || '用户'}
+                      alt={
+                        artwork.profiles.display_name || artwork.profiles.username || 'JustFruitPie'
+                      }
                       className='author-avatar'
                     />
                   ) : (
                     <div className='avatar-placeholder'>
-                      {(artwork.profiles?.username || '用户').charAt(0).toUpperCase()}
+                      {(
+                        artwork.profiles?.display_name ||
+                        artwork.profiles?.username ||
+                        'JustFruitPie'
+                      )
+                        .charAt(0)
+                        .toUpperCase()}
                     </div>
                   )}
                 </div>
                 <div className='author-details'>
-                  <h4>{artwork.profiles?.username || '匿名艺术家'}</h4>
+                  <h4>
+                    {artwork.profiles?.display_name || artwork.profiles?.username || 'JustFruitPie'}
+                  </h4>
                   <div className='publish-date'>
                     {new Date(artwork.created_at).toLocaleDateString('zh-CN', {
                       year: 'numeric',
@@ -586,7 +628,13 @@ export function ImageGalleryModal({
                     })}
                   </div>
                 </div>
-                <button className='follow-button'>关注</button>
+                <button
+                  className={`follow-button ${isFollowing ? 'following' : ''}`}
+                  onClick={handleFollow}
+                  disabled={isCheckingFollow || !user || user.id === artwork.user_id}
+                >
+                  {isFollowing ? '已关注' : '关注'}
+                </button>
               </div>
 
               <h1 className='artwork-title'>{artwork.title}</h1>
@@ -595,6 +643,30 @@ export function ImageGalleryModal({
             <div className='modal-details-content'>
               {/* 作品描述 */}
               {artwork.description && <p className='artwork-description'>{artwork.description}</p>}
+
+              {/* AI提示词 */}
+              {artwork.prompt && (
+                <div className='ai-prompt-section'>
+                  <h4 className='prompt-section-title'>AI提示词</h4>
+                  <div className='prompt-content'>
+                    <p className='prompt-text-modal'>{artwork.prompt}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* 标签 */}
+              {artwork.tags && artwork.tags.length > 0 && (
+                <div className='tags-section'>
+                  <h4 className='tags-section-title'>标签</h4>
+                  <div className='tags-list-modal'>
+                    {artwork.tags.map((tag, index) => (
+                      <span key={index} className='tag-item-modal'>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* AI参数面板 */}
               {(artwork.model ||

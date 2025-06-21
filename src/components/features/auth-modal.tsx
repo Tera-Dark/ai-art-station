@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import { X, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/services/supabase.service'
+import { User } from '@supabase/supabase-js'
 
 interface AuthModalProps {
   isOpen: boolean
   onClose: () => void
-  onLoginSuccess: (user: { id: string; email?: string }) => void // 修复any类型
+  onLoginSuccess: (user: User) => void
 }
 
 export function AuthModal({ isOpen, onClose, onLoginSuccess }: AuthModalProps) {

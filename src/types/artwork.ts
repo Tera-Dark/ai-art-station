@@ -1,6 +1,7 @@
 // 用户的公开信息
 export interface Profile {
   username: string | null
+  display_name: string | null
   avatar_url: string | null
 }
 

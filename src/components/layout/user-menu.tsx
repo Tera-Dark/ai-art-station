@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   Image as ImageIcon,
+  Users,
 } from 'lucide-react'
 import Image from 'next/image'
 import { User } from '@supabase/supabase-js'
@@ -104,6 +105,10 @@ export function UserMenu({ onUploadClick, user }: UserMenuProps) {
             <Link href='/favorites' className='menu-item'>
               <Star size={16} />
               <span>我的收藏</span>
+            </Link>
+            <Link href='/follows' className='menu-item'>
+              <Users size={16} />
+              <span>关注列表</span>
             </Link>
           </div>
 

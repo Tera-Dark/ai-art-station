@@ -149,6 +149,95 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 更新关注统计
+CREATE OR REPLACE FUNCTION update_follow_counts()
+RETURNS trigger AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        -- 增加关注者的following_count
+        UPDATE profiles 
+        SET following_count = following_count + 1 
+        WHERE id = NEW.follower_id;
+        
+        -- 增加被关注者的followers_count
+        UPDATE profiles 
+        SET followers_count = followers_count + 1 
+        WHERE id = NEW.following_id;
+        
+        RETURN NEW;
+    ELSIF TG_OP = 'DELETE' THEN
+        -- 减少关注者的following_count
+        UPDATE profiles 
+        SET following_count = GREATEST(0, following_count - 1)
+        WHERE id = OLD.follower_id;
+        
+        -- 减少被关注者的followers_count
+        UPDATE profiles 
+        SET followers_count = GREATEST(0, followers_count - 1)
+        WHERE id = OLD.following_id;
+        
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ====================================
+-- 关注相关RPC函数
+-- ====================================
+
+-- 获取用户的粉丝列表
+CREATE OR REPLACE FUNCTION get_user_followers(user_id UUID)
+RETURNS TABLE (
+    id UUID,
+    username TEXT,
+    display_name TEXT,
+    avatar_url TEXT,
+    followers_count INTEGER,
+    followed_at TIMESTAMP WITH TIME ZONE
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.id,
+        p.username,
+        p.display_name,
+        p.avatar_url,
+        p.followers_count,
+        f.created_at as followed_at
+    FROM follows f
+    JOIN profiles p ON f.follower_id = p.id
+    WHERE f.following_id = user_id
+    ORDER BY f.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 获取用户的关注列表
+CREATE OR REPLACE FUNCTION get_user_following(user_id UUID)
+RETURNS TABLE (
+    id UUID,
+    username TEXT,
+    display_name TEXT,
+    avatar_url TEXT,
+    followers_count INTEGER,
+    followed_at TIMESTAMP WITH TIME ZONE
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.id,
+        p.username,
+        p.display_name,
+        p.avatar_url,
+        p.followers_count,
+        f.created_at as followed_at
+    FROM follows f
+    JOIN profiles p ON f.following_id = p.id
+    WHERE f.follower_id = user_id
+    ORDER BY f.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ====================================
 -- 创建触发器
 -- ====================================
@@ -196,5 +285,11 @@ CREATE TRIGGER comment_likes_count_trigger
     AFTER INSERT OR DELETE ON comment_likes
     FOR EACH ROW EXECUTE FUNCTION update_comment_likes_count();
 
+-- 关注统计触发器
+DROP TRIGGER IF EXISTS follow_counts_trigger ON follows;
+CREATE TRIGGER follow_counts_trigger
+    AFTER INSERT OR DELETE ON follows
+    FOR EACH ROW EXECUTE FUNCTION update_follow_counts();
+
 -- 完成提示
-SELECT '✅ 函数和触发器创建完成！包含自动更新字段、计数统计等自动化功能。' AS result; 
+SELECT '✅ 函数和触发器创建完成！包含自动更新字段、计数统计、关注统计等自动化功能。' AS result; 

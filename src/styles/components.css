@@ -14,8 +14,8 @@
   border-radius: 16px;
   overflow: hidden;
   background: var(--background-primary);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 3px 16px rgba(0, 0, 0, 0.08);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -24,15 +24,15 @@
 
 .artwork-card:hover {
   transform: translateY(-8px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+  border-color: rgba(0, 0, 0, 0.12);
 }
 
 /* 图片区域 */
 .artwork-image {
   position: relative;
   width: 100%;
-  aspect-ratio: 4/5;
+  aspect-ratio: 3/4;
   overflow: hidden;
   background: var(--background-light);
 }
@@ -46,6 +46,7 @@
 
 .artwork-card:hover .artwork-image img {
   transform: scale(1.08);
+  filter: brightness(1.05) saturate(1.1);
 }
 
 /* 图片加载失败占位符 */
@@ -84,13 +85,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s ease;
 }
 
 .artwork-card:hover .artwork-overlay {
@@ -108,16 +109,29 @@
   gap: 8px;
   color: white;
   font-size: 15px;
-  font-weight: 500;
-  padding: 8px 12px;
+  font-weight: 600;
+  padding: 10px 14px;
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.artwork-stats .stat-item svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.artwork-stats .stat-item:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.05);
 }
 
 /* 作品信息区域 */
 .artwork-info {
-  padding: 20px;
+  padding: 18px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -135,14 +149,15 @@
 
 .artwork-title {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-primary);
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  letter-spacing: -0.02em;
 }
 
 /* 作品底部信息 - 现代风格 */
@@ -156,11 +171,12 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: space-between;
 }
 
 .author-avatar-modern {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   overflow: hidden;
   background: var(--background-light);
@@ -169,6 +185,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .author-avatar-modern img {
@@ -178,8 +195,8 @@
 }
 
 .avatar-placeholder-modern {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text-secondary);
 }
 
@@ -189,73 +206,259 @@
 }
 
 .author-name-modern {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 4px 0;
-  line-height: 1.3;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+/* 作品卡片描述样式 */
+.artwork-card .artwork-description {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin: 6px 0 10px 0;
+  font-weight: 400;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* AI提示词样式 */
+.artwork-prompt {
+  margin: 10px 0;
+  padding: 10px;
+  background: rgba(99, 102, 241, 0.04);
+  border-radius: 10px;
+  border: 1px solid rgba(99, 102, 241, 0.08);
+}
+
+.prompt-label {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.prompt-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+  margin: 0;
+  font-family: ui-monospace, 'SF Mono', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 标签样式 */
+.artwork-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0;
+}
+
+.tag-item {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--background-light);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tag-item:hover {
+  background: var(--text-primary);
+  color: var(--background-primary);
+  transform: translateY(-1px);
+}
+
+.tag-more {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--text-secondary);
+  color: var(--background-primary);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  opacity: 0.7;
+}
+
 .artwork-meta-modern {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 10px;
+  font-size: 13px;
   color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+}
+
+.meta-item svg {
+  width: 12px;
+  height: 12px;
 }
 
 .meta-divider {
-  opacity: 0.5;
+  opacity: 0.4;
+  font-weight: 400;
 }
 
 .date-modern {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /* 操作按钮组 */
 .action-buttons {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .action-button {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border: none;
-  background: none;
+  background: var(--background-light);
   color: var(--text-secondary);
   cursor: pointer;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .action-button:hover {
-  background: var(--background-light);
+  background: var(--background-primary);
   color: var(--text-primary);
   transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .action-button.liked {
   color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
 }
 
 .action-button.bookmarked {
   color: var(--text-primary);
-  background: var(--background-light);
+  background: var(--background-primary);
+  border-color: var(--text-primary);
+}
+
+.action-button svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .artwork-card {
+    border-radius: 14px;
+  }
+
+  .artwork-info {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .artwork-title {
+    font-size: 16px;
+  }
+
+  .artwork-card .artwork-description {
+    font-size: 13px;
+    margin: 4px 0 8px 0;
+  }
+
+  .artwork-tags {
+    gap: 3px;
+    margin: 4px 0;
+  }
+
+  .tag-item,
+  .tag-more {
+    padding: 2px 6px;
+    font-size: 10px;
+    border-radius: 10px;
+  }
+
+  .action-buttons {
+    gap: 4px;
+  }
+
+  .action-button {
+    width: 34px;
+    height: 34px;
+  }
+
+  .action-button svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .author-avatar-modern {
+    width: 32px;
+    height: 32px;
+  }
+
+  .avatar-placeholder-modern {
+    font-size: 12px;
+  }
+
+  .author-name-modern {
+    font-size: 14px;
+  }
+
+  .artwork-meta-modern {
+    font-size: 12px;
+    gap: 8px;
+  }
+
+  .meta-item svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  .follow-button-mini {
+    width: 28px;
+    height: 28px;
+  }
+
+  .follow-button-mini svg {
+    width: 12px;
+    height: 12px;
+  }
 }
 
 /* 用户菜单 */
@@ -430,4 +633,56 @@
   font-size: 20px;
   margin-bottom: 8px;
   color: var(--dark-gray);
-} 
+}
+
+/* 关注按钮 - 迷你版本 */
+.follow-button-mini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--text-primary);
+  color: var(--background-primary);
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.follow-button-mini svg {
+  width: 14px;
+  height: 14px;
+}
+
+.follow-button-mini:hover {
+  transform: scale(1.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.follow-button-mini.following {
+  background: var(--background-light);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.follow-button-mini.following:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+  transform: scale(1.15);
+}
+
+.follow-button-mini.loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.follow-button-mini:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}

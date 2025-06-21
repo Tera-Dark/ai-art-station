@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     bio TEXT,
     website TEXT,
     location TEXT,
+    followers_count INTEGER DEFAULT 0,
+    following_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -125,6 +127,20 @@ CREATE TABLE IF NOT EXISTS user_favorites (
 );
 
 -- ====================================
+-- 社交功能表
+-- ====================================
+
+-- 关注表
+CREATE TABLE IF NOT EXISTS follows (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    follower_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    following_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    UNIQUE(follower_id, following_id),
+    CHECK (follower_id != following_id)
+);
+
+-- ====================================
 -- 创建性能优化索引
 -- ====================================
 
@@ -151,5 +167,9 @@ CREATE INDEX IF NOT EXISTS bookmarks_artwork_id_idx ON bookmarks(artwork_id);
 CREATE INDEX IF NOT EXISTS user_favorites_user_id_idx ON user_favorites(user_id);
 CREATE INDEX IF NOT EXISTS user_favorites_artwork_id_idx ON user_favorites(artwork_id);
 
+-- 社交功能索引
+CREATE INDEX IF NOT EXISTS follows_follower_id_idx ON follows(follower_id);
+CREATE INDEX IF NOT EXISTS follows_following_id_idx ON follows(following_id);
+
 -- 完成提示
-SELECT '✅ 基础表结构创建完成！包含 8 个主要表和所有性能索引。' AS result; 
+SELECT '✅ 基础表结构创建完成！包含 9 个主要表和所有性能索引。' AS result; 

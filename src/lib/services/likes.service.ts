@@ -23,11 +23,20 @@ export const likeService: LikeService = {
 
   async likeArtwork(userId: string, artworkId: string): Promise<boolean> {
     try {
+      console.log('开始点赞作品:', { userId, artworkId })
+
+      // 确保artworkId是数字格式
+      const artworkIdNumber = parseInt(artworkId, 10)
+      if (isNaN(artworkIdNumber)) {
+        console.error('作品ID格式无效:', { artworkId, artworkIdNumber })
+        return false
+      }
+
       // 使用 upsert 避免重复插入导致的冲突
       const { error } = await supabase.from('likes').upsert(
         {
           user_id: userId,
-          artwork_id: artworkId,
+          artwork_id: artworkIdNumber,
           created_at: new Date().toISOString(),
         },
         {
@@ -41,6 +50,7 @@ export const likeService: LikeService = {
         return false
       }
 
+      console.log('点赞作品成功:', { userId, artworkId, artworkIdNumber })
       return true
     } catch (error) {
       console.error('点赞作品时出错:', error)
@@ -50,17 +60,27 @@ export const likeService: LikeService = {
 
   async unlikeArtwork(userId: string, artworkId: string): Promise<boolean> {
     try {
+      console.log('开始取消点赞作品:', { userId, artworkId })
+
+      // 确保artworkId是数字格式
+      const artworkIdNumber = parseInt(artworkId, 10)
+      if (isNaN(artworkIdNumber)) {
+        console.error('作品ID格式无效:', { artworkId, artworkIdNumber })
+        return false
+      }
+
       const { error } = await supabase
         .from('likes')
         .delete()
         .eq('user_id', userId)
-        .eq('artwork_id', artworkId)
+        .eq('artwork_id', artworkIdNumber)
 
       if (error) {
         console.error('取消点赞作品失败:', error)
         return false
       }
 
+      console.log('取消点赞作品成功:', { userId, artworkId, artworkIdNumber })
       return true
     } catch (error) {
       console.error('取消点赞作品时出错:', error)
@@ -70,8 +90,17 @@ export const likeService: LikeService = {
 
   async checkArtworkLiked(userId: string, artworkId: string): Promise<boolean> {
     try {
+      console.log('开始检查作品点赞状态:', { userId, artworkId, artworkIdType: typeof artworkId })
+
       if (!userId || !artworkId) {
         console.warn('检查作品点赞状态：参数无效', { userId, artworkId })
+        return false
+      }
+
+      // 确保artworkId是数字格式（数据库中artwork_id是BIGINT）
+      const artworkIdNumber = parseInt(artworkId, 10)
+      if (isNaN(artworkIdNumber)) {
+        console.error('作品ID格式无效:', { artworkId, artworkIdNumber })
         return false
       }
 
@@ -79,15 +108,33 @@ export const likeService: LikeService = {
         .from('likes')
         .select('id')
         .eq('user_id', userId)
-        .eq('artwork_id', artworkId)
+        .eq('artwork_id', artworkIdNumber)
         .maybeSingle()
 
       if (error) {
-        console.error('检查作品点赞状态失败:', error)
+        console.error('检查作品点赞状态失败:', {
+          error,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          userId,
+          artworkId,
+          artworkIdNumber,
+        })
+
+        // 如果是表不存在的错误，给出明确提示
+        if (error.code === '42P01') {
+          console.error('❌ likes 表不存在！请检查数据库设置')
+        }
+
         return false
       }
 
-      return !!data
+      const isLiked = !!data
+      console.log('作品点赞状态检查完成:', { userId, artworkId, artworkIdNumber, isLiked })
+
+      return isLiked
     } catch (error) {
       console.error('检查作品点赞状态时出错:', error)
       return false
@@ -96,16 +143,26 @@ export const likeService: LikeService = {
 
   async getArtworkLikesCount(artworkId: string): Promise<number> {
     try {
+      console.log('开始获取作品点赞数:', { artworkId })
+
+      // 确保artworkId是数字格式
+      const artworkIdNumber = parseInt(artworkId, 10)
+      if (isNaN(artworkIdNumber)) {
+        console.error('作品ID格式无效:', { artworkId, artworkIdNumber })
+        return 0
+      }
+
       const { count, error } = await supabase
         .from('likes')
         .select('*', { count: 'exact', head: true })
-        .eq('artwork_id', artworkId)
+        .eq('artwork_id', artworkIdNumber)
 
       if (error) {
         console.error('获取作品点赞数失败:', error)
         return 0
       }
 
+      console.log('获取作品点赞数成功:', { artworkId, artworkIdNumber, count })
       return count || 0
     } catch (error) {
       console.error('获取作品点赞数时出错:', error)

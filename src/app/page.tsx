@@ -24,35 +24,72 @@ export default function Home() {
 
   const fetchArtworks = async () => {
     try {
+      console.log('开始获取作品数据...')
       const artworksData = await getArtworks()
+      console.log('获取到作品数据:', artworksData.length, '条')
 
+      if (artworksData.length === 0) {
+        console.log('没有获取到任何作品数据')
+        setArtworks([])
+        setFilteredArtworks([])
+        return
+      }
+
+      console.log('开始获取统计数据...')
       const artworksWithCounts = await Promise.all(
         artworksData.map(async artwork => {
-          // 获取点赞数
-          const { count: likesCount } = await supabase
-            .from('likes')
-            .select('*', { count: 'exact', head: true })
-            .eq('artwork_id', artwork.id)
+          try {
+            // 获取点赞数
+            const { count: likesCount, error: likesError } = await supabase
+              .from('likes')
+              .select('*', { count: 'exact', head: true })
+              .eq('artwork_id', artwork.id)
 
-          // 获取评论数
-          const { count: commentsCount } = await supabase
-            .from('comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('artwork_id', artwork.id)
+            if (likesError) {
+              console.warn(`获取作品 ${artwork.id} 点赞数失败:`, likesError)
+            }
 
-          return {
-            ...artwork,
-            likes_count: likesCount || 0,
-            comments_count: commentsCount || 0,
-            views_count: Math.floor(Math.random() * 1000) + 100, // 临时模拟浏览量
+            // 获取评论数
+            const { count: commentsCount, error: commentsError } = await supabase
+              .from('comments')
+              .select('*', { count: 'exact', head: true })
+              .eq('artwork_id', artwork.id)
+
+            if (commentsError) {
+              console.warn(`获取作品 ${artwork.id} 评论数失败:`, commentsError)
+            }
+
+            return {
+              ...artwork,
+              likes_count: likesCount || 0,
+              comments_count: commentsCount || 0,
+              views_count: Math.floor(Math.random() * 1000) + 100, // 临时模拟浏览量
+            }
+          } catch (error) {
+            console.error(`处理作品 ${artwork.id} 统计数据时出错:`, error)
+            return {
+              ...artwork,
+              likes_count: 0,
+              comments_count: 0,
+              views_count: Math.floor(Math.random() * 1000) + 100,
+            }
           }
         })
       )
 
+      console.log('作品数据处理完成，设置状态...')
       setArtworks(artworksWithCounts)
       setFilteredArtworks(artworksWithCounts)
+      console.log('作品数据设置完成')
     } catch (error) {
-      console.error('获取作品时出错:', error)
+      console.error('获取作品失败:', error)
+      // 提供更详细的错误信息
+      if (error instanceof Error) {
+        console.error('错误详情:', error.message)
+        console.error('错误堆栈:', error.stack)
+      }
+      setArtworks([])
+      setFilteredArtworks([])
     } finally {
       setLoading(false)
     }
@@ -72,6 +109,12 @@ export default function Home() {
           const isRecent =
             new Date(artwork.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
           return isRecent
+        }
+        if (selectedCategory === 'novelai') {
+          return (
+            artwork.model?.toLowerCase().includes('novelai') ||
+            artwork.model?.toLowerCase().includes('nai')
+          )
         }
         return artwork.model?.toLowerCase().includes(selectedCategory.toLowerCase())
       })
@@ -119,6 +162,18 @@ export default function Home() {
       id: 'stable-diffusion',
       name: 'Stable Diffusion',
       count: artworks.filter(a => a.model?.toLowerCase().includes('stable')).length,
+    },
+    {
+      id: 'novelai',
+      name: 'NovelAI',
+      count: artworks.filter(
+        a => a.model?.toLowerCase().includes('novelai') || a.model?.toLowerCase().includes('nai')
+      ).length,
+    },
+    {
+      id: 'flux',
+      name: 'Flux',
+      count: artworks.filter(a => a.model?.toLowerCase().includes('flux')).length,
     },
   ]
 

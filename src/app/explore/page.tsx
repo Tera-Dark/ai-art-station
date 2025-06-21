@@ -13,10 +13,14 @@ import { supabase } from '@/lib/services/supabase.service'
 const AI_MODELS = [
   { id: 'all', name: '全部模型', icon: '🎨' },
   { id: 'midjourney', name: 'Midjourney', icon: '🌙' },
-  { id: 'dall-e', name: 'DALL-E', icon: '🤖' },
   { id: 'stable-diffusion', name: 'Stable Diffusion', icon: '🔮' },
+  { id: 'novelai', name: 'NovelAI', icon: '📚' },
+  { id: 'flux', name: 'Flux', icon: '⚡' },
+  { id: 'dall-e', name: 'DALL-E', icon: '🤖' },
+  { id: 'lumina', name: 'Lumina', icon: '✨' },
   { id: 'firefly', name: 'Adobe Firefly', icon: '🔥' },
   { id: 'leonardo', name: 'Leonardo AI', icon: '🎭' },
+  { id: 'others', name: '其他模型', icon: '🚀' },
 ]
 
 export default function Explore() {
@@ -79,7 +83,26 @@ export default function Explore() {
     if (selectedModel !== 'all') {
       filtered = filtered.filter(artwork => {
         if (!artwork.model) return false
-        return artwork.model.toLowerCase().includes(selectedModel.toLowerCase())
+        const model = artwork.model.toLowerCase()
+
+        if (selectedModel === 'novelai') {
+          return model.includes('novelai') || model.includes('nai')
+        } else if (selectedModel === 'others') {
+          // 其他模型：不包含已知模型关键词的
+          return (
+            !model.includes('midjourney') &&
+            !model.includes('dall') &&
+            !model.includes('stable') &&
+            !model.includes('firefly') &&
+            !model.includes('leonardo') &&
+            !model.includes('novelai') &&
+            !model.includes('nai') &&
+            !model.includes('flux') &&
+            !model.includes('lumina')
+          )
+        } else {
+          return model.includes(selectedModel.toLowerCase())
+        }
       })
     }
 
@@ -112,6 +135,31 @@ export default function Explore() {
       count = artworks.filter(a => a.model?.toLowerCase().includes('firefly')).length
     } else if (model.id === 'leonardo') {
       count = artworks.filter(a => a.model?.toLowerCase().includes('leonardo')).length
+    } else if (model.id === 'novelai') {
+      count = artworks.filter(
+        a => a.model?.toLowerCase().includes('novelai') || a.model?.toLowerCase().includes('nai')
+      ).length
+    } else if (model.id === 'flux') {
+      count = artworks.filter(a => a.model?.toLowerCase().includes('flux')).length
+    } else if (model.id === 'lumina') {
+      count = artworks.filter(a => a.model?.toLowerCase().includes('lumina')).length
+    } else if (model.id === 'others') {
+      // 其他模型 = 总数 - 所有已知模型的数量
+      const knownModelCount = artworks.filter(a => {
+        const model = a.model?.toLowerCase() || ''
+        return (
+          model.includes('midjourney') ||
+          model.includes('dall') ||
+          model.includes('stable') ||
+          model.includes('firefly') ||
+          model.includes('leonardo') ||
+          model.includes('novelai') ||
+          model.includes('nai') ||
+          model.includes('flux') ||
+          model.includes('lumina')
+        )
+      }).length
+      count = artworks.length - knownModelCount
     }
 
     return {

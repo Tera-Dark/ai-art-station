@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS profiles (
     bio TEXT,
     website TEXT,
     location TEXT,
+    followers_count INTEGER DEFAULT 0,
+    following_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -130,6 +132,16 @@ CREATE TABLE IF NOT EXISTS user_favorites (
     UNIQUE(user_id, artwork_id)
 );
 
+-- 关注表
+CREATE TABLE IF NOT EXISTS follows (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    follower_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    following_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    UNIQUE(follower_id, following_id),
+    CHECK (follower_id != following_id)
+);
+
 
 
 -- ====================================
@@ -159,6 +171,10 @@ CREATE INDEX IF NOT EXISTS bookmarks_artwork_id_idx ON bookmarks(artwork_id);
 CREATE INDEX IF NOT EXISTS user_favorites_user_id_idx ON user_favorites(user_id);
 CREATE INDEX IF NOT EXISTS user_favorites_artwork_id_idx ON user_favorites(artwork_id);
 
+-- 社交功能索引
+CREATE INDEX IF NOT EXISTS follows_follower_id_idx ON follows(follower_id);
+CREATE INDEX IF NOT EXISTS follows_following_id_idx ON follows(following_id);
+
 -- ====================================
 -- 第五步：启用RLS
 -- ====================================
@@ -171,6 +187,7 @@ ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comment_likes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookmarks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_favorites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE follows ENABLE ROW LEVEL SECURITY;
 
 -- ====================================
 -- 第六步：创建安全策略
@@ -295,6 +312,20 @@ CREATE POLICY "Authenticated users can insert favorites" ON user_favorites
 
 CREATE POLICY "Users can delete their own favorites" ON user_favorites
     FOR DELETE USING (auth.uid() = user_id);
+
+-- 关注表策略
+DROP POLICY IF EXISTS "Follows are viewable by everyone" ON follows;
+DROP POLICY IF EXISTS "Authenticated users can insert follows" ON follows;
+DROP POLICY IF EXISTS "Users can delete their own follows" ON follows;
+
+CREATE POLICY "Follows are viewable by everyone" ON follows
+    FOR SELECT USING (true);
+
+CREATE POLICY "Authenticated users can insert follows" ON follows
+    FOR INSERT WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = follower_id);
+
+CREATE POLICY "Users can delete their own follows" ON follows
+    FOR DELETE USING (auth.uid() = follower_id);
 
 -- ====================================
 -- 第七步：创建函数
@@ -429,6 +460,91 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 更新关注统计
+CREATE OR REPLACE FUNCTION update_follow_counts()
+RETURNS trigger AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        -- 增加关注者的following_count
+        UPDATE profiles 
+        SET following_count = following_count + 1 
+        WHERE id = NEW.follower_id;
+        
+        -- 增加被关注者的followers_count
+        UPDATE profiles 
+        SET followers_count = followers_count + 1 
+        WHERE id = NEW.following_id;
+        
+        RETURN NEW;
+    ELSIF TG_OP = 'DELETE' THEN
+        -- 减少关注者的following_count
+        UPDATE profiles 
+        SET following_count = GREATEST(0, following_count - 1)
+        WHERE id = OLD.follower_id;
+        
+        -- 减少被关注者的followers_count
+        UPDATE profiles 
+        SET followers_count = GREATEST(0, followers_count - 1)
+        WHERE id = OLD.following_id;
+        
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 获取用户的粉丝列表
+CREATE OR REPLACE FUNCTION get_user_followers(user_id UUID)
+RETURNS TABLE (
+    id UUID,
+    username TEXT,
+    display_name TEXT,
+    avatar_url TEXT,
+    followers_count INTEGER,
+    followed_at TIMESTAMP WITH TIME ZONE
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.id,
+        p.username,
+        p.display_name,
+        p.avatar_url,
+        p.followers_count,
+        f.created_at as followed_at
+    FROM follows f
+    JOIN profiles p ON f.follower_id = p.id
+    WHERE f.following_id = user_id
+    ORDER BY f.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 获取用户的关注列表
+CREATE OR REPLACE FUNCTION get_user_following(user_id UUID)
+RETURNS TABLE (
+    id UUID,
+    username TEXT,
+    display_name TEXT,
+    avatar_url TEXT,
+    followers_count INTEGER,
+    followed_at TIMESTAMP WITH TIME ZONE
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.id,
+        p.username,
+        p.display_name,
+        p.avatar_url,
+        p.followers_count,
+        f.created_at as followed_at
+    FROM follows f
+    JOIN profiles p ON f.following_id = p.id
+    WHERE f.follower_id = user_id
+    ORDER BY f.created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- ====================================
 -- 第八步：创建触发器
 -- ====================================
@@ -475,6 +591,12 @@ DROP TRIGGER IF EXISTS comment_likes_count_trigger ON comment_likes;
 CREATE TRIGGER comment_likes_count_trigger
     AFTER INSERT OR DELETE ON comment_likes
     FOR EACH ROW EXECUTE FUNCTION update_comment_likes_count();
+
+-- 关注统计触发器
+DROP TRIGGER IF EXISTS follow_counts_trigger ON follows;
+CREATE TRIGGER follow_counts_trigger
+    AFTER INSERT OR DELETE ON follows
+    FOR EACH ROW EXECUTE FUNCTION update_follow_counts();
 
 -- ====================================
 -- 完成提示
@@ -550,4 +672,61 @@ BEGIN
     LEFT JOIN profiles p ON a.user_id = p.id
     ORDER BY a.created_at DESC;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER; 
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ====================================
+-- 🚨 RLS 故障排除专区
+-- ====================================
+
+-- 如果遇到 "query would be affected by row-level security policy" 错误
+-- 请选择执行以下其中一个解决方案：
+
+-- 🎯 推荐解决方案：完全禁用RLS（适用于开发环境）
+-- 执行方法：取消注释下面的代码块
+/*
+DO $$
+BEGIN
+    RAISE NOTICE '🚨 开始执行RLS完全禁用...';
+    
+    -- 完全禁用所有表的RLS
+    ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
+    ALTER TABLE artworks DISABLE ROW LEVEL SECURITY;  
+    ALTER TABLE comments DISABLE ROW LEVEL SECURITY;
+    ALTER TABLE likes DISABLE ROW LEVEL SECURITY;
+    ALTER TABLE user_favorites DISABLE ROW LEVEL SECURITY;
+    ALTER TABLE follows DISABLE ROW LEVEL SECURITY;
+    ALTER TABLE user_settings DISABLE ROW LEVEL SECURITY;
+    ALTER TABLE comment_likes DISABLE ROW LEVEL SECURITY;
+    ALTER TABLE bookmarks DISABLE ROW LEVEL SECURITY;
+    
+    RAISE NOTICE '✅ 所有表的RLS已完全禁用！';
+END $$;
+
+-- 验证RLS状态
+SELECT 
+    '📊 RLS状态检查' as check_type,
+    schemaname,
+    tablename,
+    rowsecurity as rls_enabled,
+    CASE 
+        WHEN rowsecurity THEN '🔒 仍然启用'
+        ELSE '✅ 已禁用'
+    END as security_status
+FROM pg_tables 
+WHERE schemaname = 'public' 
+AND tablename IN ('profiles', 'artworks', 'comments', 'likes', 'user_favorites', 'follows', 'user_settings', 'comment_likes', 'bookmarks')
+ORDER BY tablename;
+
+-- 测试查询
+SELECT '🧪 测试artworks表查询...' as test_name, COUNT(*) as artwork_count FROM artworks;
+SELECT '🎉 RLS禁用完成！所有表现在都可以正常访问。' as final_result;
+*/
+
+-- ====================================
+-- 最终完成提示
+-- ====================================
+
+SELECT 
+    '🎉 AI Art Station 数据库完整设置完成！' AS status,
+    '✅ 包含表、索引、策略、函数、触发器和故障排除选项' AS features,
+    '💡 如遇RLS权限问题，请查看上方的故障排除专区' AS troubleshooting_note; 

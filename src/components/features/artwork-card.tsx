@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Heart, MessageCircle, Eye, Bookmark } from 'lucide-react'
+import { Heart, MessageCircle, Eye, Bookmark, UserPlus, UserMinus } from 'lucide-react'
 import Image from 'next/image'
 import { Artwork } from '@/types/artwork'
 import { ImageGalleryModal } from './image-gallery-modal'
 import { useAuth } from '@/contexts/auth-context'
 import { favoriteService } from '@/lib/services/favorites.service'
 import { likeService } from '@/lib/services/likes.service'
+import { followService } from '@/lib/services/follow.service'
 
 interface ArtworkCardProps {
   artwork: Artwork
@@ -25,33 +26,39 @@ export function ArtworkCard({ artwork, onLike, onBookmark, onView }: ArtworkCard
   const [isCheckingFavorite, setIsCheckingFavorite] = useState(false)
   const [, setIsCheckingLike] = useState(false)
   const [likesCount, setLikesCount] = useState(artwork.likes_count || 0)
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [isCheckingFollow, setIsCheckingFollow] = useState(false)
 
-  // 检查收藏和点赞状态
+  // 检查收藏、点赞和关注状态
   useEffect(() => {
     const checkUserInteractions = async () => {
       if (user && artwork.id) {
         setIsCheckingFavorite(true)
         setIsCheckingLike(true)
+        setIsCheckingFollow(true)
         try {
-          // 并行检查收藏和点赞状态
-          const [isFavorited, isArtworkLiked] = await Promise.all([
+          // 并行检查收藏、点赞和关注状态
+          const [isFavorited, isArtworkLiked, isFollowingAuthor] = await Promise.all([
             favoriteService.checkIsFavorited(user.id, artwork.id.toString()),
             likeService.checkArtworkLiked(user.id, artwork.id.toString()),
+            artwork.user_id ? followService.isFollowing(artwork.user_id) : Promise.resolve(false),
           ])
 
           setIsBookmarked(isFavorited)
           setIsLiked(isArtworkLiked)
+          setIsFollowing(isFollowingAuthor)
         } catch (error) {
           console.error('检查用户交互状态失败:', error)
         } finally {
           setIsCheckingFavorite(false)
           setIsCheckingLike(false)
+          setIsCheckingFollow(false)
         }
       }
     }
 
     checkUserInteractions()
-  }, [user, artwork.id])
+  }, [user, artwork.id, artwork.user_id])
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -130,6 +137,41 @@ export function ArtworkCard({ artwork, onLike, onBookmark, onView }: ArtworkCard
     setImageError(true)
   }
 
+  const handleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+
+    if (!user) {
+      alert('请先登录后再关注用户')
+      return
+    }
+
+    if (!artwork.user_id) {
+      return
+    }
+
+    if (user.id === artwork.user_id) {
+      return // 不能关注自己
+    }
+
+    try {
+      const newFollowState = !isFollowing
+      setIsFollowing(newFollowState)
+
+      const success = newFollowState
+        ? await followService.followUser(artwork.user_id)
+        : await followService.unfollowUser(artwork.user_id)
+
+      if (!success) {
+        setIsFollowing(!newFollowState)
+        alert('操作失败，请稍后重试')
+      }
+    } catch (error) {
+      console.error('关注操作失败:', error)
+      setIsFollowing(!isFollowing)
+      alert('操作失败，请稍后重试')
+    }
+  }
+
   return (
     <>
       <div className='artwork-card' onClick={handleImageClick}>
@@ -203,6 +245,20 @@ export function ArtworkCard({ artwork, onLike, onBookmark, onView }: ArtworkCard
             </p>
           )}
 
+          {/* 标签 */}
+          {artwork.tags && artwork.tags.length > 0 && (
+            <div className='artwork-tags'>
+              {artwork.tags.slice(0, 3).map((tag, index) => (
+                <span key={index} className='tag-item'>
+                  {tag}
+                </span>
+              ))}
+              {artwork.tags.length > 3 && (
+                <span className='tag-more'>+{artwork.tags.length - 3}</span>
+              )}
+            </div>
+          )}
+
           {/* 底部作者信息 - 简约优雅设计 */}
           <div className='artwork-footer-modern'>
             <div className='author-info-modern'>
@@ -210,20 +266,28 @@ export function ArtworkCard({ artwork, onLike, onBookmark, onView }: ArtworkCard
                 {artwork.profiles?.avatar_url ? (
                   <Image
                     src={artwork.profiles.avatar_url}
-                    alt={artwork.profiles.username || '用户'}
-                    width={28}
-                    height={28}
+                    alt={
+                      artwork.profiles.display_name || artwork.profiles.username || 'JustFruitPie'
+                    }
+                    width={36}
+                    height={36}
                     style={{ objectFit: 'cover' }}
                   />
                 ) : (
                   <span className='avatar-placeholder-modern'>
-                    {(artwork.profiles?.username || '用户').charAt(0).toUpperCase()}
+                    {(
+                      artwork.profiles?.display_name ||
+                      artwork.profiles?.username ||
+                      'JustFruitPie'
+                    )
+                      .charAt(0)
+                      .toUpperCase()}
                   </span>
                 )}
               </div>
               <div className='author-details-modern'>
                 <span className='author-name-modern'>
-                  {artwork.profiles?.username || '匿名艺术家'}
+                  {artwork.profiles?.display_name || artwork.profiles?.username || 'JustFruitPie'}
                 </span>
                 <div className='artwork-meta-modern'>
                   <span className='meta-item'>
@@ -245,6 +309,18 @@ export function ArtworkCard({ artwork, onLike, onBookmark, onView }: ArtworkCard
                 </div>
               </div>
             </div>
+
+            {/* 关注按钮 - 只在不是自己的作品时显示 */}
+            {user && artwork.user_id && user.id !== artwork.user_id && (
+              <button
+                className={`follow-button-mini ${isFollowing ? 'following' : ''} ${isCheckingFollow ? 'loading' : ''}`}
+                onClick={handleFollow}
+                disabled={isCheckingFollow}
+                title={isFollowing ? '取消关注' : '关注'}
+              >
+                {isFollowing ? <UserMinus size={14} /> : <UserPlus size={14} />}
+              </button>
+            )}
           </div>
         </div>
       </div>

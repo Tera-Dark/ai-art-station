@@ -13,10 +13,17 @@ export const favoriteService: FavoriteService = {
   async addToFavorites(userId: string, artworkId: string): Promise<boolean> {
     try {
       console.log('添加收藏:', { userId, artworkId })
-      
+
+      // 确保artworkId是数字格式
+      const artworkIdNumber = parseInt(artworkId, 10)
+      if (isNaN(artworkIdNumber)) {
+        console.error('作品ID格式无效:', { artworkId, artworkIdNumber })
+        return false
+      }
+
       const { error } = await supabase.from('user_favorites').insert({
         user_id: userId,
-        artwork_id: artworkId,
+        artwork_id: artworkIdNumber,
         created_at: new Date().toISOString(),
       })
 
@@ -25,7 +32,7 @@ export const favoriteService: FavoriteService = {
         return false
       }
 
-      console.log('收藏添加成功')
+      console.log('收藏添加成功:', { userId, artworkId, artworkIdNumber })
       return true
     } catch (error) {
       console.error('添加收藏时出错:', error)
@@ -37,19 +44,26 @@ export const favoriteService: FavoriteService = {
   async removeFromFavorites(userId: string, artworkId: string): Promise<boolean> {
     try {
       console.log('移除收藏:', { userId, artworkId })
-      
+
+      // 确保artworkId是数字格式
+      const artworkIdNumber = parseInt(artworkId, 10)
+      if (isNaN(artworkIdNumber)) {
+        console.error('作品ID格式无效:', { artworkId, artworkIdNumber })
+        return false
+      }
+
       const { error } = await supabase
         .from('user_favorites')
         .delete()
         .eq('user_id', userId)
-        .eq('artwork_id', artworkId)
+        .eq('artwork_id', artworkIdNumber)
 
       if (error) {
         console.error('移除收藏失败:', error)
         return false
       }
 
-      console.log('收藏移除成功')
+      console.log('收藏移除成功:', { userId, artworkId, artworkIdNumber })
       return true
     } catch (error) {
       console.error('移除收藏时出错:', error)
@@ -60,11 +74,18 @@ export const favoriteService: FavoriteService = {
   // 检查是否已收藏
   async checkIsFavorited(userId: string, artworkId: string): Promise<boolean> {
     try {
-      console.log('检查收藏状态:', { userId, artworkId })
-      
+      console.log('检查收藏状态:', { userId, artworkId, artworkIdType: typeof artworkId })
+
       // 参数验证
       if (!userId || !artworkId) {
         console.warn('检查收藏状态：参数无效', { userId, artworkId })
+        return false
+      }
+
+      // 确保artworkId是数字格式（数据库中artwork_id是BIGINT）
+      const artworkIdNumber = parseInt(artworkId, 10)
+      if (isNaN(artworkIdNumber)) {
+        console.error('作品ID格式无效:', { artworkId, artworkIdNumber })
         return false
       }
 
@@ -73,7 +94,7 @@ export const favoriteService: FavoriteService = {
         .from('user_favorites')
         .select('id')
         .eq('user_id', userId)
-        .eq('artwork_id', artworkId)
+        .eq('artwork_id', artworkIdNumber)
         .maybeSingle()
 
       if (error) {
@@ -84,20 +105,23 @@ export const favoriteService: FavoriteService = {
           details: error.details,
           hint: error.hint,
           userId,
-          artworkId
+          artworkId,
+          artworkIdNumber,
         })
-        
+
         // 如果是表不存在的错误，给出明确提示
         if (error.code === '42P01') {
-          console.error('❌ user_favorites 表不存在！请在 Supabase 中运行 additional-tables.sql 脚本')
+          console.error(
+            '❌ user_favorites 表不存在！请在 Supabase 中运行 additional-tables.sql 脚本'
+          )
         }
-        
+
         return false
       }
 
       const isFavorited = !!data
-      console.log('收藏状态检查完成:', { userId, artworkId, isFavorited })
-      
+      console.log('收藏状态检查完成:', { userId, artworkId, artworkIdNumber, isFavorited })
+
       return isFavorited
     } catch (error) {
       console.error('检查收藏状态时出错:', error)
@@ -109,7 +133,7 @@ export const favoriteService: FavoriteService = {
   async getUserFavorites(userId: string): Promise<string[]> {
     try {
       console.log('获取用户收藏:', { userId })
-      
+
       const { data, error } = await supabase
         .from('user_favorites')
         .select('artwork_id')
@@ -123,7 +147,7 @@ export const favoriteService: FavoriteService = {
 
       const favoriteIds = data?.map(item => item.artwork_id) || []
       console.log('用户收藏获取成功:', { userId, count: favoriteIds.length })
-      
+
       return favoriteIds
     } catch (error) {
       console.error('获取用户收藏时出错:', error)
@@ -200,17 +224,17 @@ export async function getUserFavoriteIds(userId: string): Promise<string[]> {
 // 测试收藏功能的调试函数
 export async function debugFavorites() {
   console.log('🔍 开始调试收藏功能...')
-  
+
   try {
     // 1. 测试 Supabase 连接
     const { data: testData, error: testError } = await supabase
       .from('user_favorites')
       .select('*')
       .limit(1)
-    
+
     if (testError) {
       console.error('❌ Supabase 连接测试失败:', testError)
-      
+
       if (testError.code === '42P01') {
         console.error('💡 解决方案：请在 Supabase SQL 编辑器中运行以下命令：')
         console.log(`
@@ -242,10 +266,13 @@ CREATE POLICY "Users can delete their own favorites" ON user_favorites
       console.log('📊 user_favorites 表存在且可访问')
       console.log('🔍 测试数据:', testData)
     }
-    
+
     // 2. 检查用户认证状态
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+
     if (authError) {
       console.error('❌ 获取用户信息失败:', authError)
     } else if (!user) {
@@ -253,10 +280,9 @@ CREATE POLICY "Users can delete their own favorites" ON user_favorites
     } else {
       console.log('✅ 用户已登录:', user.id)
     }
-    
   } catch (error) {
     console.error('❌ 调试过程中出错:', error)
   }
-  
+
   console.log('🔍 收藏功能调试完成')
 }

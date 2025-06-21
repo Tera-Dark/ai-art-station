@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { MessageCircle, Send, Heart, Reply, MoreHorizontal } from 'lucide-react'
 import { useAuth } from '@/contexts/auth-context'
 import { Comment } from '@/types/artwork'
-import { supabase } from '@/lib/services/supabase.service'
+import { commentService } from '@/lib/services/comment.service'
 import { likeService } from '@/lib/services/likes.service'
 import Image from 'next/image'
 
@@ -17,7 +17,7 @@ export function CommentSection({ artworkId, onCommentCountChange }: CommentSecti
   const { user, isAuthenticated } = useAuth()
   const [comments, setComments] = useState<Comment[]>([])
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
-  const [replyText, setReplyText] = useState('')
+  const [replyTexts, setReplyTexts] = useState<{ [commentId: string]: string }>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -26,164 +26,89 @@ export function CommentSection({ artworkId, onCommentCountChange }: CommentSecti
     fetchComments()
   }, [artworkId])
 
-  const fetchComments = async () => {
+  const fetchComments = useCallback(async () => {
     setLoading(true)
     try {
       console.log('开始获取评论，作品ID:', artworkId)
 
-      // 简化查询，先不使用关联查询
-      const { data: commentsData, error: commentsError } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('artwork_id', artworkId)
-        .is('parent_id', null)
-        .order('created_at', { ascending: false })
+      // 使用新的评论服务
+      const commentsData = await commentService.getCommentsByArtwork(artworkId)
 
-      if (commentsError) {
-        console.error('获取主评论失败:', commentsError)
-        console.error('错误详情:', {
-          message: commentsError.message,
-          details: commentsError.details,
-          hint: commentsError.hint,
-          code: commentsError.code,
-        })
-        return
-      }
-
-      console.log('主评论数据:', commentsData)
-
-      // 获取回复
-      const { data: repliesData, error: repliesError } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('artwork_id', artworkId)
-        .not('parent_id', 'is', null)
-        .order('created_at', { ascending: true })
-
-      if (repliesError) {
-        console.error('获取回复失败:', repliesError)
-        return
-      }
-
-      console.log('回复数据:', repliesData)
-
-      // 获取所有相关用户的信息
-      const userIds = [
-        ...(commentsData?.map(c => c.user_id) || []),
-        ...(repliesData?.map(r => r.user_id) || []),
-      ].filter(Boolean)
-
-      let usersData: any[] = []
-      if (userIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username, avatar_url')
-          .in('id', userIds)
-
-        if (profilesError) {
-          console.error('获取用户信息失败:', profilesError)
-        } else {
-          usersData = profiles || []
-        }
-      }
-
-      console.log('用户信息:', usersData)
-
-      // 组织评论数据结构
-      const commentsWithReplies =
-        commentsData?.map(comment => {
-          const userInfo = usersData.find(u => u.id === comment.user_id)
-          return {
-            id: comment.id,
-            content: comment.content,
-            author: userInfo?.username || '匿名用户',
-            avatar: userInfo?.avatar_url,
-            created_at: comment.created_at,
-            likes: comment.likes_count || 0,
-            isLiked: false,
-            replies:
-              repliesData
-                ?.filter(reply => reply.parent_id === comment.id)
-                .map(reply => {
-                  const replyUserInfo = usersData.find(u => u.id === reply.user_id)
-                  return {
-                    id: reply.id,
-                    content: reply.content,
-                    author: replyUserInfo?.username || '匿名用户',
-                    avatar: replyUserInfo?.avatar_url,
-                    created_at: reply.created_at,
-                    likes: reply.likes_count || 0,
-                    isLiked: false,
-                    parent_id: reply.parent_id,
-                  }
-                }) || [],
-          }
-        }) || []
-
-      console.log('最终评论数据:', commentsWithReplies)
-      setComments(commentsWithReplies)
+      console.log('获取到评论数据:', commentsData)
+      setComments(commentsData)
 
       // 更新评论总数
-      const totalComments = commentsWithReplies.length + (repliesData?.length || 0)
+      const totalComments = commentsData.reduce(
+        (total, comment) => total + 1 + (comment.replies?.length || 0),
+        0
+      )
       onCommentCountChange?.(totalComments)
     } catch (error) {
       console.error('获取评论时出错:', error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [artworkId, onCommentCountChange])
 
-  const handleSubmitReply = async (e: React.FormEvent, parentId: string) => {
-    e.preventDefault()
-    if (!replyText.trim() || !user || submitting) return
+  const handleSubmitReply = useCallback(
+    async (e: React.FormEvent, parentId: string) => {
+      e.preventDefault()
+      const currentReplyText = replyTexts[parentId] || ''
+      if (!currentReplyText.trim() || !user || submitting) return
 
-    setSubmitting(true)
-    try {
-      const { error } = await supabase.from('comments').insert({
-        artwork_id: artworkId,
-        user_id: user.id,
-        content: replyText.trim(),
-        parent_id: parentId,
-      })
+      setSubmitting(true)
+      try {
+        // 使用新的评论服务创建回复
+        const newReply = await commentService.createComment(
+          artworkId,
+          user.id,
+          currentReplyText.trim(),
+          parentId
+        )
 
-      if (error) {
-        console.error('提交回复失败:', error)
+        if (!newReply) {
+          alert('提交回复失败，请重试')
+          return
+        }
+
+        // 清空对应评论的回复文本
+        setReplyTexts(prev => ({ ...prev, [parentId]: '' }))
+        setReplyingTo(null)
+        fetchComments() // 重新获取评论
+      } catch (error) {
+        console.error('提交回复时出错:', error)
         alert('提交回复失败，请重试')
+      } finally {
+        setSubmitting(false)
+      }
+    },
+    [replyTexts, user, submitting, artworkId, fetchComments]
+  )
+
+  const handleLike = useCallback(
+    async (commentId: string) => {
+      if (!user) {
+        alert('请先登录后再点赞')
         return
       }
 
-      setReplyText('')
-      setReplyingTo(null)
-      fetchComments() // 重新获取评论
-    } catch (error) {
-      console.error('提交回复时出错:', error)
-      alert('提交回复失败，请重试')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const handleLike = async (commentId: string) => {
-    if (!user) {
-      alert('请先登录后再点赞')
-      return
-    }
-
-    try {
-      const success = await likeService.toggleCommentLike(user.id, commentId)
-      if (success) {
-        // 重新获取评论以更新点赞状态和数量
-        fetchComments()
-      } else {
+      try {
+        const success = await likeService.toggleCommentLike(user.id, commentId)
+        if (success) {
+          // 重新获取评论以更新点赞状态和数量
+          fetchComments()
+        } else {
+          alert('操作失败，请稍后重试')
+        }
+      } catch (error) {
+        console.error('点赞操作失败:', error)
         alert('操作失败，请稍后重试')
       }
-    } catch (error) {
-      console.error('点赞操作失败:', error)
-      alert('操作失败，请稍后重试')
-    }
-  }
+    },
+    [user, fetchComments]
+  )
 
-  const formatTime = (dateString: string) => {
+  const formatTime = useCallback((dateString: string) => {
     const date = new Date(dateString)
     const now = new Date()
     const diff = now.getTime() - date.getTime()
@@ -198,111 +123,134 @@ export function CommentSection({ artworkId, onCommentCountChange }: CommentSecti
     if (days < 7) return `${days}天前`
 
     return date.toLocaleDateString('zh-CN')
-  }
+  }, [])
 
-  const generateAvatar = (username: string) => {
+  const generateAvatar = useCallback((username: string) => {
     return username.charAt(0).toUpperCase()
-  }
+  }, [])
 
-  const CommentItem = ({ comment, isReply = false }: { comment: Comment; isReply?: boolean }) => (
-    <div className={`comment-item ${isReply ? 'reply' : ''}`}>
-      <div className='comment-avatar'>
-        {comment.avatar ? (
-          <Image src={comment.avatar} alt={comment.author} width={40} height={40} />
-        ) : (
-          <span>{generateAvatar(comment.author)}</span>
-        )}
-      </div>
-
-      <div className='comment-content'>
-        <div className='comment-header'>
-          <span className='comment-author'>{comment.author}</span>
-          <span className='comment-time'>{formatTime(comment.created_at)}</span>
-        </div>
-
-        <div className='comment-text'>{comment.content}</div>
-
-        <div className='comment-actions'>
-          <button
-            className={`comment-action ${comment.isLiked ? 'liked' : ''}`}
-            onClick={() => handleLike(comment.id)}
-          >
-            <Heart size={14} fill={comment.isLiked ? 'currentColor' : 'none'} />
-            {comment.likes > 0 && <span>{comment.likes}</span>}
-          </button>
-
-          {!isReply && (
-            <button
-              className='comment-action'
-              onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-            >
-              <Reply size={14} />
-              <span>回复</span>
-            </button>
-          )}
-
-          <button className='comment-action'>
-            <MoreHorizontal size={14} />
-          </button>
-        </div>
-
-        {/* 回复表单 */}
-        {replyingTo === comment.id && !isReply && isAuthenticated && (
-          <form className='reply-form' onSubmit={e => handleSubmitReply(e, comment.id)}>
-            <div className='reply-input-wrapper'>
-              <div className='reply-user-avatar'>
-                {user?.user_metadata?.avatar_url ? (
-                  <Image
-                    src={user.user_metadata.avatar_url}
-                    alt='用户头像'
-                    width={32}
-                    height={32}
-                  />
-                ) : (
-                  <span>
-                    {user
-                      ? generateAvatar(
-                          user.user_metadata?.username || user.email?.split('@')[0] || '用户'
-                        )
-                      : ''}
-                  </span>
-                )}
-              </div>
-              <textarea
-                value={replyText}
-                onChange={e => setReplyText(e.target.value)}
-                placeholder={`回复 ${comment.author}...`}
-                className='reply-input'
-                rows={2}
-                maxLength={500}
-              />
-            </div>
-            <div className='reply-form-actions'>
-              <button type='button' className='reply-cancel' onClick={() => setReplyingTo(null)}>
-                取消
-              </button>
-              <button
-                type='submit'
-                className='reply-submit'
-                disabled={!replyText.trim() || submitting}
-              >
-                <Send size={14} />
-                {submitting ? '发送中...' : '回复'}
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* 显示回复 */}
-        {comment.replies && comment.replies.length > 0 && (
-          <div className='replies-list'>
-            {comment.replies.map(reply => (
-              <CommentItem key={reply.id} comment={reply} isReply={true} />
-            ))}
+  const CommentItem = useCallback(
+    ({ comment, isReply = false }: { comment: Comment; isReply?: boolean }) => {
+      return (
+        <div className={`comment-item ${isReply ? 'reply' : ''}`}>
+          <div className='comment-avatar'>
+            {comment.avatar ? (
+              <Image src={comment.avatar} alt={comment.author} width={40} height={40} />
+            ) : (
+              <span>{generateAvatar(comment.author)}</span>
+            )}
           </div>
-        )}
-      </div>
-    </div>
+
+          <div className='comment-content'>
+            <div className='comment-header'>
+              <span className='comment-author'>{comment.author}</span>
+              <span className='comment-time'>{formatTime(comment.created_at)}</span>
+            </div>
+
+            <div className='comment-text'>{comment.content}</div>
+
+            <div className='comment-actions'>
+              <button
+                className={`comment-action ${comment.isLiked ? 'liked' : ''}`}
+                onClick={() => handleLike(comment.id)}
+              >
+                <Heart size={14} fill={comment.isLiked ? 'currentColor' : 'none'} />
+                {comment.likes > 0 && <span>{comment.likes}</span>}
+              </button>
+
+              {!isReply && (
+                <button
+                  className='comment-action'
+                  onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                >
+                  <Reply size={14} />
+                  <span>回复</span>
+                </button>
+              )}
+
+              <button className='comment-action'>
+                <MoreHorizontal size={14} />
+              </button>
+            </div>
+
+            {/* 回复表单 */}
+            {replyingTo === comment.id && !isReply && isAuthenticated && (
+              <form className='reply-form' onSubmit={e => handleSubmitReply(e, comment.id)}>
+                <div className='reply-input-wrapper'>
+                  <div className='reply-user-avatar'>
+                    {user?.user_metadata?.avatar_url ? (
+                      <Image
+                        src={user.user_metadata.avatar_url}
+                        alt='用户头像'
+                        width={32}
+                        height={32}
+                      />
+                    ) : (
+                      <span>
+                        {user
+                          ? generateAvatar(
+                              user.user_metadata?.username || user.email?.split('@')[0] || '用户'
+                            )
+                          : ''}
+                      </span>
+                    )}
+                  </div>
+                  <textarea
+                    key={`reply-input-${comment.id}`}
+                    value={replyTexts[comment.id] || ''}
+                    onChange={e =>
+                      setReplyTexts(prev => ({ ...prev, [comment.id]: e.target.value }))
+                    }
+                    placeholder={`回复 ${comment.author}...`}
+                    className='reply-input'
+                    rows={2}
+                    maxLength={500}
+                    autoFocus
+                  />
+                </div>
+                <div className='reply-form-actions'>
+                  <button
+                    type='button'
+                    className='reply-cancel'
+                    onClick={() => setReplyingTo(null)}
+                  >
+                    取消
+                  </button>
+                  <button
+                    type='submit'
+                    className='reply-submit'
+                    disabled={!(replyTexts[comment.id] || '').trim() || submitting}
+                  >
+                    <Send size={14} />
+                    {submitting ? '发送中...' : '回复'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* 显示回复 */}
+            {comment.replies && comment.replies.length > 0 && (
+              <div className='replies-list'>
+                {comment.replies.map(reply => (
+                  <CommentItem key={reply.id} comment={reply} isReply={true} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )
+    },
+    [
+      replyingTo,
+      replyTexts,
+      isAuthenticated,
+      user,
+      submitting,
+      handleLike,
+      handleSubmitReply,
+      generateAvatar,
+      formatTime,
+    ]
   )
 
   return (

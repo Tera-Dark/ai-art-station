@@ -9,15 +9,82 @@ import { createArtwork, updateArtwork } from '@/lib/services/artwork.service'
 import { storageConfig, supabaseConfig } from '@/lib/constants/config'
 
 const AI_MODELS = [
+  // Midjourney 系列
+  'Midjourney v6.1',
   'Midjourney v6',
   'Midjourney v5.2',
   'Niji Journey v6',
   'Niji Journey v5',
-  'DALL-E 3',
+
+  // Flux 系列 (2024-2025年新模型)
+  'Flux.1 Pro',
+  'Flux.1 Dev',
+  'Flux.1 Schnell',
+  'Flux.1 Redux',
+  'Flux.1 Fill',
+  'Flux Realism',
+
+  // NovelAI 系列
+  'NovelAI Diffusion V3',
+  'NovelAI Diffusion V2',
+  'NAI Diffusion Anime V3',
+  'NAI Diffusion Furry',
+
+  // Stable Diffusion 系列
+  'Stable Diffusion 3.5',
   'Stable Diffusion 3',
   'Stable Diffusion XL',
+  'SDXL Turbo',
+  'SD3 Medium',
+
+  // DALL-E 系列
+  'DALL-E 3',
+  'DALL-E 2',
+
+  // Lumina 系列 (2024-2025年新模型)
+  'Lumina Next T2I',
+  'Lumina T2I',
+  'Lumina Image 2',
+
+  // Noob 系列和其他动画模型
+  'Noob SDXL',
+  'Noob Epsilon',
+  'Animagine XL 3.1',
+  'Pony Diffusion XL',
+
+  // 其他新模型
+  'Adobe Firefly 3',
+  'Leonardo AI Phoenix',
+  'Playground v2.5',
+  'Ideogram v2',
+  'Recraft V3',
+  'Aurora (xAI)',
+  'Kolors',
+  'Hunyuan DiT',
 ]
-const SAMPLERS = ['DPM++ 2M Karras', 'Euler a', 'Euler', 'LMS', 'DPM2 Karras', 'DDIM']
+const SAMPLERS = [
+  // 经典采样器
+  'DPM++ 2M Karras',
+  'DPM++ 2M SDE Karras',
+  'DPM++ 3M SDE',
+  'Euler a',
+  'Euler',
+  'Heun',
+  'LMS',
+  'DDIM',
+  'DDPM',
+
+  // 新的高级采样器
+  'DPM++ 2S a Karras',
+  'DPM++ SDE Karras',
+  'UniPC',
+  'PLMS',
+  'DPM adaptive',
+  'LCM',
+  'DDIM CFG++',
+  'DPM++ 2M SGM Uniform',
+  'Restart',
+]
 
 interface UploadModalProps {
   isOpen: boolean
