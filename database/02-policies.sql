@@ -176,23 +176,37 @@ CREATE POLICY "Users can delete their own favorites" ON user_favorites
     FOR DELETE USING (auth.uid() = user_id);
 
 -- ====================================
--- 关注表策略 (follows)
+-- 关注表策略 (follows) - 优化版
 -- ====================================
 
--- 清除旧策略
+-- 清除所有可能冲突的旧策略
 DROP POLICY IF EXISTS "Follows are viewable by everyone" ON follows;
 DROP POLICY IF EXISTS "Authenticated users can insert follows" ON follows;
 DROP POLICY IF EXISTS "Users can delete their own follows" ON follows;
+DROP POLICY IF EXISTS "Enable read access for all users" ON follows;
+DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON follows;
+DROP POLICY IF EXISTS "Enable delete for authenticated users only" ON follows;
+DROP POLICY IF EXISTS "Allow all operations for follows" ON follows;
+DROP POLICY IF EXISTS "follows_select_policy" ON follows;
+DROP POLICY IF EXISTS "follows_insert_policy" ON follows;
+DROP POLICY IF EXISTS "follows_delete_policy" ON follows;
 
--- 新策略
-CREATE POLICY "Follows are viewable by everyone" ON follows
+-- 新的简化策略 - 解决权限冲突
+CREATE POLICY "follows_select_policy" ON follows
     FOR SELECT USING (true);
 
-CREATE POLICY "Authenticated users can insert follows" ON follows
-    FOR INSERT WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = follower_id);
+CREATE POLICY "follows_insert_policy" ON follows
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated' 
+        AND auth.uid() = follower_id 
+        AND follower_id != following_id
+    );
 
-CREATE POLICY "Users can delete their own follows" ON follows
-    FOR DELETE USING (auth.uid() = follower_id);
+CREATE POLICY "follows_delete_policy" ON follows
+    FOR DELETE USING (
+        auth.role() = 'authenticated' 
+        AND auth.uid() = follower_id
+    );
 
 -- ====================================
 -- RLS 故障排除选项

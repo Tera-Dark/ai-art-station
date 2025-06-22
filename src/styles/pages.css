@@ -2368,6 +2368,170 @@
 
   .follow-button {
     padding: 6px 12px;
-    font-size: 13px;
+    font-size: 12px;
+  }
+}
+
+/* 新增样式：可点击用户信息 */
+.user-info.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 12px;
+  padding: 8px;
+  margin: -8px;
+}
+
+.user-info.clickable:hover {
+  background: var(--background-light);
+  transform: translateX(4px);
+}
+
+/* 用户名行样式 */
+.user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.external-link-icon {
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.user-info.clickable:hover .external-link-icon {
+  opacity: 1;
+  color: var(--text-secondary);
+}
+
+/* 用户操作区域 */
+.user-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 优化关注按钮样式 */
+.follow-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--text-primary);
+  color: var(--background-primary);
+  border: none;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  min-width: 70px;
+  justify-content: center;
+}
+
+.follow-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.follow-button.following {
+  background: var(--background-light);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.follow-button.following:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+/* 底部提示消息样式 */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: var(--background-primary);
+  color: var(--text-primary);
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 1000;
+  opacity: 0;
+  transition: all 0.3s ease;
+  max-width: 300px;
+  text-align: center;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast.success {
+  background: #f0f9ff;
+  color: #0369a1;
+  border-color: #bae6fd;
+}
+
+.toast.error {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+/* 深色模式下的提示消息 */
+@media (prefers-color-scheme: dark) {
+  .toast.success {
+    background: #0c4a6e;
+    color: #7dd3fc;
+    border-color: #0369a1;
+  }
+
+  .toast.error {
+    background: #7f1d1d;
+    color: #fca5a5;
+    border-color: #dc2626;
+  }
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .user-info.clickable {
+    padding: 6px;
+    margin: -6px;
+  }
+
+  .user-name-row {
+    gap: 6px;
+  }
+
+  .external-link-icon {
+    width: 12px;
+    height: 12px;
+  }
+
+  .follow-button {
+    padding: 6px 12px;
+    font-size: 12px;
+    min-width: 60px;
+  }
+
+  .toast {
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    transform: translateY(100px);
+    max-width: none;
+  }
+
+  .toast.show {
+    transform: translateY(0);
   }
 }

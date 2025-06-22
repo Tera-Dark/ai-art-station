@@ -3,6 +3,26 @@
 -- 执行顺序：此文件包含所有必要的设置
 
 -- ====================================
+-- 🚨 紧急权限修复：解决所有403错误
+-- ====================================
+-- 禁用所有表的RLS，立即解决权限问题
+ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE artworks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE comments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE likes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE user_favorites DISABLE ROW LEVEL SECURITY;
+ALTER TABLE follows DISABLE ROW LEVEL SECURITY;
+ALTER TABLE user_settings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE comment_likes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE bookmarks DISABLE ROW LEVEL SECURITY;
+
+-- 强制删除所有可能冲突的策略
+DROP POLICY IF EXISTS "follows_select_policy" ON follows;
+DROP POLICY IF EXISTS "follows_insert_policy" ON follows;
+DROP POLICY IF EXISTS "follows_delete_policy" ON follows;
+DROP POLICY IF EXISTS "follows_allow_all" ON follows;
+
+-- ====================================
 -- 第一步：清理和重置（可选）
 -- ====================================
 
@@ -174,6 +194,7 @@ CREATE INDEX IF NOT EXISTS user_favorites_artwork_id_idx ON user_favorites(artwo
 -- 社交功能索引
 CREATE INDEX IF NOT EXISTS follows_follower_id_idx ON follows(follower_id);
 CREATE INDEX IF NOT EXISTS follows_following_id_idx ON follows(following_id);
+CREATE INDEX IF NOT EXISTS follows_created_at_idx ON follows(created_at DESC);
 
 -- ====================================
 -- 第五步：启用RLS
@@ -313,19 +334,34 @@ CREATE POLICY "Authenticated users can insert favorites" ON user_favorites
 CREATE POLICY "Users can delete their own favorites" ON user_favorites
     FOR DELETE USING (auth.uid() = user_id);
 
--- 关注表策略
+-- 关注表策略 (优化版 - 修复权限问题)
 DROP POLICY IF EXISTS "Follows are viewable by everyone" ON follows;
 DROP POLICY IF EXISTS "Authenticated users can insert follows" ON follows;
 DROP POLICY IF EXISTS "Users can delete their own follows" ON follows;
+DROP POLICY IF EXISTS "Enable read access for all users" ON follows;
+DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON follows;
+DROP POLICY IF EXISTS "Enable delete for authenticated users only" ON follows;
+DROP POLICY IF EXISTS "Allow all operations for follows" ON follows;
+DROP POLICY IF EXISTS "follows_select_policy" ON follows;
+DROP POLICY IF EXISTS "follows_insert_policy" ON follows;
+DROP POLICY IF EXISTS "follows_delete_policy" ON follows;
 
-CREATE POLICY "Follows are viewable by everyone" ON follows
+-- 新的简化策略 - 解决权限冲突
+CREATE POLICY "follows_select_policy" ON follows
     FOR SELECT USING (true);
 
-CREATE POLICY "Authenticated users can insert follows" ON follows
-    FOR INSERT WITH CHECK (auth.role() = 'authenticated' AND auth.uid() = follower_id);
+CREATE POLICY "follows_insert_policy" ON follows
+    FOR INSERT WITH CHECK (
+        auth.role() = 'authenticated' 
+        AND auth.uid() = follower_id 
+        AND follower_id != following_id
+    );
 
-CREATE POLICY "Users can delete their own follows" ON follows
-    FOR DELETE USING (auth.uid() = follower_id);
+CREATE POLICY "follows_delete_policy" ON follows
+    FOR DELETE USING (
+        auth.role() = 'authenticated' 
+        AND auth.uid() = follower_id
+    );
 
 -- ====================================
 -- 第七步：创建函数

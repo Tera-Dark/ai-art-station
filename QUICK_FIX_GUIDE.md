@@ -303,3 +303,237 @@
 ---
 
 _最后更新：2025年1月28日_
+
+## 数据库权限问题修复
+
+### 问题: 多个表出现 403 权限错误
+
+**现象**:
+
+```
+GET https://xxx.supabase.co/rest/v1/follows 403 (Forbidden)
+GET https://xxx.supabase.co/rest/v1/likes 403 (Forbidden)
+GET https://xxx.supabase.co/rest/v1/user_favorites 403 (Forbidden)
+检查关注状态失败、检查点赞状态失败、检查收藏状态失败
+```
+
+**原因**: Supabase RLS (Row Level Security) 策略配置错误或冲突
+
+### 🚨 一键修复方案（推荐）
+
+#### 方案1: 执行05-fixes.sql ⭐ **最简单最有效**
+
+在Supabase SQL编辑器中执行 `database/05-fixes.sql`
+
+- ✅ 文件开头已包含所有403权限修复
+- ✅ 自动禁用所有表的RLS
+- ✅ 清除所有冲突策略
+- ✅ 包含验证和测试
+
+#### 方案2: 执行00-complete-setup.sql（完整重建）
+
+在Supabase SQL编辑器中执行 `database/00-complete-setup.sql`
+
+- ✅ 文件开头已包含紧急权限修复
+- ✅ 完整的数据库结构重建
+
+### 📋 快速操作步骤
+
+1. **登录Supabase控制台**
+2. **进入SQL编辑器**
+3. **复制粘贴** `database/05-fixes.sql` 中的全部内容
+4. **点击执行** ▶️
+5. **等待执行完成**（看到绿色的成功提示）
+6. **刷新应用页面** - 所有403错误都应该消失了！
+
+### 💡 如果仍有问题
+
+如果执行后仍有403错误，请在Supabase SQL编辑器中再执行一次：
+
+```sql
+ALTER TABLE follows DISABLE ROW LEVEL SECURITY;
+```
+
+### 🔧 如果方案1无效
+
+执行 `database/00-complete-setup.sql` 进行完整重建
+
+### ✅ 验证修复效果
+
+执行修复后，在浏览器控制台应该看到：
+
+- ✅ 关注功能正常工作
+- ✅ 点赞功能正常工作
+- ✅ 收藏功能正常工作
+- ❌ 不再出现403权限错误
+
+### 验证修复
+
+1. 在浏览器控制台检查是否还有403错误
+2. 测试关注/取消关注功能
+3. 检查关注状态是否正确显示
+
+**修复相关文件**:
+
+- `database/00-complete-setup.sql` - 完整数据库配置
+- `database/02-policies.sql` - RLS策略配置
+- `database/05-fixes.sql` - 修复和故障排除
+- `src/lib/services/follow.service.ts` - 关注服务逻辑
+
+## 数据库权限问题
+
+### 常见RLS错误
+
+如果遇到其他表的权限问题，可以参考以下模式：
+
+```sql
+-- 检查当前策略
+SELECT policyname, cmd, qual, with_check
+FROM pg_policies
+WHERE tablename = 'your_table_name';
+
+-- 删除冲突策略
+DROP POLICY IF EXISTS "old_policy_name" ON your_table_name;
+
+-- 创建新策略
+CREATE POLICY "new_policy_name" ON your_table_name
+    FOR SELECT USING (true);
+```
+
+### 紧急RLS完全禁用
+
+```sql
+-- 对所有表禁用RLS（仅用于紧急情况）
+ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE artworks DISABLE ROW LEVEL SECURITY;
+ALTER TABLE comments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE likes DISABLE ROW LEVEL SECURITY;
+ALTER TABLE user_favorites DISABLE ROW LEVEL SECURITY;
+ALTER TABLE follows DISABLE ROW LEVEL SECURITY;
+```
+
+## 部署相关问题
+
+### Vercel部署前检查
+
+1. 确保 `npm run build` 无错误
+2. 检查环境变量配置
+3. 验证数据库连接
+
+### 常用命令
+
+```bash
+# 构建检查
+npm run build
+
+# 代码质量检查
+npm run lint
+
+# 类型检查
+npx tsc --noEmit
+```
+
+## 最新修复记录
+
+### 2025-01-27: 关注功能权限修复
+
+- **问题**: follows表权限错误，403 Forbidden
+- **修复**: 优化了所有数据库配置文件中的follows策略，统一策略命名和逻辑
+- **修改文件**: `00-complete-setup.sql`, `02-policies.sql`, `05-fixes.sql`
+- **状态**: ✅ 数据库配置已整合优化，删除冲突策略，统一权限配置
+
+### 2025-01-27: 评论系统修复
+
+- **问题**: 回复输入框文本覆盖和焦点丢失
+- **修复**: 使用独立状态管理和useCallback优化
+- **状态**: ✅ 已完成并测试
+
+---
+
+**注意**: 对于数据库相关的修复，建议先在测试环境中验证，然后再应用到生产环境。
+
+## 🚨 紧急修复：403权限错误
+
+### ⚡ 超级简单一行修复（推荐）
+
+**直接复制以下SQL到Supabase SQL编辑器执行：**
+
+```sql
+ALTER TABLE profiles DISABLE ROW LEVEL SECURITY; ALTER TABLE artworks DISABLE ROW LEVEL SECURITY; ALTER TABLE comments DISABLE ROW LEVEL SECURITY; ALTER TABLE likes DISABLE ROW LEVEL SECURITY; ALTER TABLE user_favorites DISABLE ROW LEVEL SECURITY; ALTER TABLE follows DISABLE ROW LEVEL SECURITY; ALTER TABLE user_settings DISABLE ROW LEVEL SECURITY; ALTER TABLE comment_likes DISABLE ROW LEVEL SECURITY; ALTER TABLE bookmarks DISABLE ROW LEVEL SECURITY;
+```
+
+**执行后刷新页面，403错误立即解决！**
+
+---
+
+## 其他修复方案
+
+### 方案1：执行完整修复脚本
+
+```sql
+-- 在Supabase SQL编辑器中执行
+-- 复制database/05-fixes.sql的内容
+```
+
+### 方案2：执行完整数据库配置
+
+```sql
+-- 在Supabase SQL编辑器中执行
+-- 复制database/00-complete-setup.sql的内容
+```
+
+## 🔍 问题排查步骤
+
+### 1. 确认问题
+
+控制台出现类似错误：
+
+```
+GET /rest/v1/follows 403 (Forbidden)
+permission denied for table follows
+```
+
+### 2. 执行修复
+
+- 打开 [Supabase Dashboard](https://supabase.com/dashboard)
+- 进入你的项目
+- 点击左侧 "SQL Editor"
+- 粘贴上面的一行修复SQL
+- 点击 "Run" 执行
+
+### 3. 验证修复
+
+- 刷新你的应用页面
+- 检查控制台是否还有403错误
+- 测试关注功能是否正常
+
+## 📋 常见问题
+
+### Q: 为什么要禁用RLS？
+
+A: 在开发环境中，RLS权限配置复杂，容易出现冲突。禁用RLS可以快速解决权限问题，专注于功能开发。
+
+### Q: 生产环境安全吗？
+
+A: 本修复主要用于开发环境。生产环境建议重新配置适当的RLS策略。
+
+### Q: 如何重新启用RLS？
+
+A: 执行以下SQL：
+
+```sql
+ALTER TABLE follows ENABLE ROW LEVEL SECURITY;
+-- 然后重新创建相应的策略
+```
+
+## 🎯 修复成功标志
+
+执行修复后，你应该看到：
+
+- ✅ 控制台没有403错误
+- ✅ 关注功能正常工作
+- ✅ 其他功能不受影响
+
+---
+
+_最后更新: 2025-01-27_

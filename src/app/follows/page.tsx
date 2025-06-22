@@ -1,13 +1,30 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/contexts/auth-context'
 import { followService, FollowUser } from '@/lib/services/follow.service'
-import { Users, UserPlus, UserMinus, ArrowLeft, Heart } from 'lucide-react'
+import { Users, UserPlus, UserMinus, ArrowLeft, Heart, ExternalLink } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 
 type TabType = 'followers' | 'following'
+
+// 底部提示消息组件
+interface ToastProps {
+  message: string
+  isVisible: boolean
+  type: 'success' | 'error'
+}
+
+function Toast({ message, isVisible, type }: ToastProps) {
+  if (!isVisible) return null
+
+  return (
+    <div className={`toast ${type} ${isVisible ? 'show' : ''}`}>
+      <span>{message}</span>
+    </div>
+  )
+}
 
 export default function FollowsPage() {
   const { user } = useAuth()
@@ -18,13 +35,14 @@ export default function FollowsPage() {
   const [loading, setLoading] = useState(true)
   const [followingStatus, setFollowingStatus] = useState<Record<string, boolean>>({})
 
-  useEffect(() => {
-    if (user) {
-      loadFollowData()
-    }
-  }, [user])
+  // 底部提示状态
+  const [toast, setToast] = useState({
+    message: '',
+    isVisible: false,
+    type: 'success' as 'success' | 'error',
+  })
 
-  const loadFollowData = async () => {
+  const loadFollowData = useCallback(async () => {
     if (!user) return
 
     setLoading(true)
@@ -52,25 +70,66 @@ export default function FollowsPage() {
     } finally {
       setLoading(false)
     }
+  }, [user])
+
+  useEffect(() => {
+    if (user) {
+      loadFollowData()
+    }
+  }, [user, loadFollowData])
+
+  // 显示提示消息
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, isVisible: true, type })
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, isVisible: false }))
+    }, 3000)
+  }
+
+  // 跳转到用户主页
+  const handleUserClick = (_userId: string) => {
+    // 暂时跳转到主页，后续可以扩展为用户个人主页
+    // TODO: 创建动态路由 /users/[userId] 来查看其他用户的个人主页
+    router.push('/')
   }
 
   const handleFollow = async (userId: string) => {
     const isCurrentlyFollowing = followingStatus[userId]
 
-    const success = isCurrentlyFollowing
-      ? await followService.unfollowUser(userId)
-      : await followService.followUser(userId)
+    try {
+      const success = isCurrentlyFollowing
+        ? await followService.unfollowUser(userId)
+        : await followService.followUser(userId)
 
-    if (success) {
-      setFollowingStatus(prev => ({
-        ...prev,
-        [userId]: !isCurrentlyFollowing,
-      }))
+      if (success) {
+        setFollowingStatus(prev => ({
+          ...prev,
+          [userId]: !isCurrentlyFollowing,
+        }))
 
-      // 如果取消关注，从关注列表中移除
-      if (isCurrentlyFollowing && activeTab === 'following') {
-        setFollowing(prev => prev.filter(u => u.id !== userId))
+        // 显示成功提示
+        const action = isCurrentlyFollowing ? '取消关注' : '关注'
+        showToast(`${action}成功`, 'success')
+
+        // 如果是在关注页面取消关注，更新粉丝数量但保持用户在列表中
+        if (isCurrentlyFollowing && activeTab === 'following') {
+          setFollowing(prev =>
+            prev.map(u =>
+              u.id === userId ? { ...u, followers_count: Math.max(0, u.followers_count - 1) } : u
+            )
+          )
+        } else if (!isCurrentlyFollowing && activeTab === 'followers') {
+          // 如果是在粉丝页面关注用户，更新粉丝数量
+          setFollowers(prev =>
+            prev.map(u => (u.id === userId ? { ...u, followers_count: u.followers_count + 1 } : u))
+          )
+        }
+      } else {
+        showToast('操作失败，请稍后重试', 'error')
       }
+    } catch (error) {
+      console.error('关注操作失败:', error)
+      showToast('操作失败，请稍后重试', 'error')
     }
   }
 
@@ -146,63 +205,78 @@ export default function FollowsPage() {
               </div>
             ) : (
               <div className='users-list'>
-                {currentList.map(user => (
-                  <div key={user.id} className='user-card'>
-                    <div className='user-info'>
+                {currentList.map(listUser => (
+                  <div key={listUser.id} className='user-card'>
+                    {/* 可点击的用户信息区域 */}
+                    <div
+                      className='user-info clickable'
+                      onClick={() => handleUserClick(listUser.id)}
+                    >
                       <div className='user-avatar'>
-                        {user.avatar_url ? (
+                        {listUser.avatar_url ? (
                           <Image
-                            src={user.avatar_url}
-                            alt={user.username || '用户'}
+                            src={listUser.avatar_url}
+                            alt={listUser.username || '用户'}
                             width={48}
                             height={48}
                             style={{ objectFit: 'cover' }}
                           />
                         ) : (
                           <div className='avatar-placeholder'>
-                            {(user.username || user.display_name || '用户').charAt(0).toUpperCase()}
+                            {(listUser.username || listUser.display_name || '用户')
+                              .charAt(0)
+                              .toUpperCase()}
                           </div>
                         )}
                       </div>
                       <div className='user-details'>
-                        <h4 className='user-name'>
-                          {user.display_name || user.username || '匿名用户'}
-                        </h4>
+                        <div className='user-name-row'>
+                          <h4 className='user-name'>
+                            {listUser.display_name || listUser.username || '匿名用户'}
+                          </h4>
+                          <ExternalLink size={14} className='external-link-icon' />
+                        </div>
                         <div className='user-stats'>
-                          <span>{user.followers_count} 粉丝</span>
-                          {user.following_count !== undefined && (
+                          <span>{listUser.followers_count} 粉丝</span>
+                          {listUser.following_count !== undefined && (
                             <>
                               <span className='stats-divider'>·</span>
-                              <span>{user.following_count} 关注</span>
+                              <span>{listUser.following_count} 关注</span>
                             </>
                           )}
                         </div>
                         <div className='follow-date'>
                           {activeTab === 'followers' ? '关注了你' : '关注于'}{' '}
-                          {new Date(user.followed_at).toLocaleDateString('zh-CN')}
+                          {new Date(listUser.followed_at).toLocaleDateString('zh-CN')}
                         </div>
                       </div>
                     </div>
 
-                    {/* 关注按钮 */}
-                    {user.id !== user.id && ( // 不显示自己
-                      <button
-                        className={`follow-button ${followingStatus[user.id] ? 'following' : ''}`}
-                        onClick={() => handleFollow(user.id)}
-                      >
-                        {followingStatus[user.id] ? (
-                          <>
-                            <UserMinus size={16} />
-                            <span>取消关注</span>
-                          </>
-                        ) : (
-                          <>
-                            <UserPlus size={16} />
-                            <span>关注</span>
-                          </>
-                        )}
-                      </button>
-                    )}
+                    {/* 关注/取关按钮 */}
+                    {user &&
+                      user.id !== listUser.id && ( // 不显示自己的按钮
+                        <div className='user-actions'>
+                          <button
+                            className={`follow-button ${followingStatus[listUser.id] ? 'following' : ''}`}
+                            onClick={e => {
+                              e.stopPropagation()
+                              handleFollow(listUser.id)
+                            }}
+                          >
+                            {followingStatus[listUser.id] ? (
+                              <>
+                                <UserMinus size={16} />
+                                <span>取关</span>
+                              </>
+                            ) : (
+                              <>
+                                <UserPlus size={16} />
+                                <span>关注</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
                   </div>
                 ))}
               </div>
@@ -210,6 +284,9 @@ export default function FollowsPage() {
           </div>
         </div>
       </div>
+
+      {/* 底部提示消息 */}
+      <Toast message={toast.message} isVisible={toast.isVisible} type={toast.type} />
     </div>
   )
 }

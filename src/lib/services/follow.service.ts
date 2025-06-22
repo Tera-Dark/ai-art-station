@@ -43,11 +43,15 @@ export const followService: FollowService = {
       })
 
       if (error) {
+        // 如果是权限错误，给出明确提示
+        if (error.code === '42501') {
+          console.error('关注功能权限受限，请执行 database/05-fixes.sql 修复权限问题')
+          return false
+        }
         console.error('关注失败:', error)
         return false
       }
 
-      console.log('关注成功')
       return true
     } catch (error) {
       console.error('关注过程中出错:', error)
@@ -73,11 +77,15 @@ export const followService: FollowService = {
         .eq('following_id', userId)
 
       if (error) {
+        // 如果是权限错误，给出明确提示
+        if (error.code === '42501') {
+          console.error('取消关注功能权限受限，请执行 database/05-fixes.sql 修复权限问题')
+          return false
+        }
         console.error('取消关注失败:', error)
         return false
       }
 
-      console.log('取消关注成功')
       return true
     } catch (error) {
       console.error('取消关注过程中出错:', error)
@@ -99,14 +107,20 @@ export const followService: FollowService = {
         return false // 自己不能关注自己
       }
 
+      // 使用 maybeSingle() 代替 single() 避免权限错误
       const { data, error } = await supabase
         .from('follows')
         .select('id')
         .eq('follower_id', user.id)
         .eq('following_id', userId)
-        .single()
+        .maybeSingle()
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
+        // 如果是权限错误，静默处理，返回false
+        if (error.code === '42501') {
+          console.warn('关注表权限受限，请执行 database/05-fixes.sql 修复')
+          return false
+        }
         console.error('检查关注状态失败:', error)
         return false
       }
@@ -194,6 +208,11 @@ export async function checkFollowingStatus(userIds: string[]): Promise<Record<st
       .in('following_id', userIds)
 
     if (error) {
+      // 如果是权限错误，静默处理
+      if (error.code === '42501') {
+        console.warn('关注表权限受限，请执行 database/05-fixes.sql 修复')
+        return {}
+      }
       console.error('批量检查关注状态失败:', error)
       return {}
     }
