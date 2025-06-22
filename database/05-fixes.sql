@@ -95,6 +95,53 @@ WHERE schemaname = 'public' AND tablename = 'follows';
 -- 修改prompt字段，允许为空（因为AI提示词是可选的）
 ALTER TABLE artworks ALTER COLUMN prompt DROP NOT NULL;
 
+-- ====================================
+-- 修复现有用户profile信息
+-- ====================================
+
+-- 更新所有硬编码的JustFruitPie用户名
+DO $$ 
+DECLARE
+    user_record RECORD;
+    new_username TEXT;
+    new_display_name TEXT;
+BEGIN
+    -- 遍历所有profiles记录，查找需要更新的用户
+    FOR user_record IN 
+        SELECT p.id, p.username, p.display_name, u.email, u.raw_user_meta_data
+        FROM profiles p
+        JOIN auth.users u ON p.id = u.id
+        WHERE p.username LIKE '%JustFruitPie%' OR p.username LIKE '%user_%'
+    LOOP
+        -- 生成新的用户名
+        new_username := COALESCE(
+            user_record.raw_user_meta_data->>'username',
+            split_part(user_record.email, '@', 1),
+            'user_' || substring(user_record.id::text from 1 for 8)
+        );
+        
+        -- 生成新的显示名称
+        new_display_name := COALESCE(
+            user_record.raw_user_meta_data->>'full_name',
+            user_record.raw_user_meta_data->>'display_name',
+            new_username
+        );
+        
+        -- 更新profile信息
+        UPDATE profiles 
+        SET 
+            username = new_username,
+            display_name = new_display_name,
+            avatar_url = COALESCE(user_record.raw_user_meta_data->>'avatar_url', avatar_url),
+            updated_at = NOW()
+        WHERE id = user_record.id;
+        
+        RAISE NOTICE '✅ 更新用户 % 的profile: % -> %', user_record.id, user_record.username, new_username;
+    END LOOP;
+    
+    RAISE NOTICE '🎉 用户profile信息修复完成！';
+END $$;
+
 -- 完成提示
 SELECT '🎉 强力修复完成！请刷新页面测试关注功能。' as message;
 

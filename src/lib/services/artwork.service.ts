@@ -54,33 +54,28 @@ class ArtworkServiceImpl extends BaseService implements ArtworkService {
       ])
 
       // 4. 合并数据
-      const artworksWithData = artworks.map(artwork => {
-        // 获取用户信息
-        let profileInfo = profiles.find(p => p.id === artwork.user_id)
-        if (!profileInfo) {
-          // 创建临时的默认profile，同时异步创建真实的profile
-          profileInfo = {
-            id: artwork.user_id,
-            username: `user_${artwork.user_id.slice(0, 8)}`,
-            display_name: '匿名用户',
-            avatar_url: null,
+      const artworksWithData = await Promise.all(
+        artworks.map(async artwork => {
+          // 获取用户信息
+          let profileInfo = profiles.find(p => p.id === artwork.user_id)
+          if (!profileInfo) {
+            // 如果没有找到profile，立即创建一个真实的profile
+            profileInfo = await this.getOrCreateUserProfile(artwork.user_id)
           }
-          // 异步创建默认profile（会尝试获取真实用户信息）
-          this.createDefaultProfile(artwork.user_id)
-        }
 
-        // 获取统计数据
-        const likesCount = likesData.find(l => l.artwork_id === artwork.id)?.count || 0
-        const commentsCount = commentsData.find(c => c.artwork_id === artwork.id)?.count || 0
+          // 获取统计数据
+          const likesCount = likesData.find(l => l.artwork_id === artwork.id)?.count || 0
+          const commentsCount = commentsData.find(c => c.artwork_id === artwork.id)?.count || 0
 
-        return {
-          ...artwork,
-          profiles: profileInfo,
-          likes_count: likesCount,
-          comments_count: commentsCount,
-          views_count: artwork.views_count || Math.floor(Math.random() * 1000) + 100,
-        }
-      })
+          return {
+            ...artwork,
+            profiles: profileInfo,
+            likes_count: likesCount,
+            comments_count: commentsCount,
+            views_count: artwork.views_count || Math.floor(Math.random() * 1000) + 100,
+          }
+        })
+      )
 
       Logger.success('作品数据处理完成')
       return artworksWithData as Artwork[]
