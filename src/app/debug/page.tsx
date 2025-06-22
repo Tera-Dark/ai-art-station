@@ -128,9 +128,10 @@ export default function DebugPage() {
           setDebugInfo(prev => prev + '   尝试创建用户资料...\n')
           const { error: insertError } = await supabase.from('profiles').insert({
             id: user.id,
-            username: 'JustFruitPie',
-            display_name: 'JustFruitPie',
-            avatar_url: null,
+            username: user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`,
+            display_name:
+              user.user_metadata?.display_name || user.email?.split('@')[0] || '匿名用户',
+            avatar_url: user.user_metadata?.avatar_url || null,
           })
 
           if (insertError) {

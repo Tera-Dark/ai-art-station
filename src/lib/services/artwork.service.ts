@@ -58,13 +58,14 @@ class ArtworkServiceImpl extends BaseService implements ArtworkService {
         // 获取用户信息
         let profileInfo = profiles.find(p => p.id === artwork.user_id)
         if (!profileInfo) {
+          // 创建临时的默认profile，同时异步创建真实的profile
           profileInfo = {
             id: artwork.user_id,
-            username: 'JustFruitPie',
-            display_name: 'JustFruitPie',
+            username: `user_${artwork.user_id.slice(0, 8)}`,
+            display_name: '匿名用户',
             avatar_url: null,
           }
-          // 异步创建默认profile
+          // 异步创建默认profile（会尝试获取真实用户信息）
           this.createDefaultProfile(artwork.user_id)
         }
 

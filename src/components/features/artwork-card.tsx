@@ -266,20 +266,14 @@ export function ArtworkCard({ artwork, onLike, onBookmark, onView }: ArtworkCard
                 {artwork.profiles?.avatar_url ? (
                   <Image
                     src={artwork.profiles.avatar_url}
-                    alt={
-                      artwork.profiles.display_name || artwork.profiles.username || 'JustFruitPie'
-                    }
+                    alt={artwork.profiles.display_name || artwork.profiles.username || '用户'}
                     width={36}
                     height={36}
                     style={{ objectFit: 'cover' }}
                   />
                 ) : (
                   <span className='avatar-placeholder-modern'>
-                    {(
-                      artwork.profiles?.display_name ||
-                      artwork.profiles?.username ||
-                      'JustFruitPie'
-                    )
+                    {(artwork.profiles?.display_name || artwork.profiles?.username || '用户')
                       .charAt(0)
                       .toUpperCase()}
                   </span>
@@ -287,7 +281,7 @@ export function ArtworkCard({ artwork, onLike, onBookmark, onView }: ArtworkCard
               </div>
               <div className='author-details-modern'>
                 <span className='author-name-modern'>
-                  {artwork.profiles?.display_name || artwork.profiles?.username || 'JustFruitPie'}
+                  {artwork.profiles?.display_name || artwork.profiles?.username || '匿名用户'}
                 </span>
                 <div className='artwork-meta-modern'>
                   <span className='meta-item'>

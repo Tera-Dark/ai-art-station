@@ -599,18 +599,12 @@ export function ImageGalleryModal({
                   {artwork.profiles?.avatar_url ? (
                     <img
                       src={artwork.profiles.avatar_url}
-                      alt={
-                        artwork.profiles.display_name || artwork.profiles.username || 'JustFruitPie'
-                      }
+                      alt={artwork.profiles.display_name || artwork.profiles.username || '用户'}
                       className='author-avatar'
                     />
                   ) : (
                     <div className='avatar-placeholder'>
-                      {(
-                        artwork.profiles?.display_name ||
-                        artwork.profiles?.username ||
-                        'JustFruitPie'
-                      )
+                      {(artwork.profiles?.display_name || artwork.profiles?.username || '用户')
                         .charAt(0)
                         .toUpperCase()}
                     </div>
@@ -618,7 +612,7 @@ export function ImageGalleryModal({
                 </div>
                 <div className='author-details'>
                   <h4>
-                    {artwork.profiles?.display_name || artwork.profiles?.username || 'JustFruitPie'}
+                    {artwork.profiles?.display_name || artwork.profiles?.username || '匿名用户'}
                   </h4>
                   <div className='publish-date'>
                     {new Date(artwork.created_at).toLocaleDateString('zh-CN', {

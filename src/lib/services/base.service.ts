@@ -123,17 +123,53 @@ export abstract class BaseService {
   }
 
   /**
+   * 获取当前认证用户的真实信息
+   */
+  protected async getCurrentUserInfo(): Promise<{
+    username: string
+    displayName: string
+    avatarUrl: string | null
+  } | null> {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) return null
+
+      const username =
+        user.user_metadata?.username || user.email?.split('@')[0] || `user_${user.id.slice(0, 8)}`
+
+      const displayName =
+        user.user_metadata?.full_name || user.user_metadata?.display_name || username
+
+      const avatarUrl = user.user_metadata?.avatar_url || null
+
+      return { username, displayName, avatarUrl }
+    } catch (error) {
+      Logger.warn('获取当前用户信息失败', error)
+      return null
+    }
+  }
+
+  /**
    * 创建默认用户信息
    */
   protected async createDefaultProfile(userId: string) {
+    // 尝试获取当前用户的真实信息
+    const userInfo = await this.getCurrentUserInfo()
+
+    const realUsername = userInfo?.username || `user_${userId.slice(0, 8)}`
+    const realDisplayName = userInfo?.displayName || '匿名用户'
+    const realAvatarUrl = userInfo?.avatarUrl || null
+
     const defaultProfile = {
       id: userId,
-      username: 'JustFruitPie',
-      display_name: 'JustFruitPie',
-      avatar_url: null,
+      username: realUsername,
+      display_name: realDisplayName,
+      avatar_url: realAvatarUrl,
     }
 
-    Logger.info(`为用户 ${userId} 创建默认profile`)
+    Logger.info(`为用户 ${userId} 创建默认profile: ${realUsername}`)
 
     // 异步创建，不阻塞主流程
     setTimeout(async () => {
@@ -145,7 +181,7 @@ export abstract class BaseService {
           avatar_url: defaultProfile.avatar_url,
           updated_at: new Date().toISOString(),
         })
-        Logger.success(`为用户 ${userId} 创建默认profile成功`)
+        Logger.success(`为用户 ${userId} 创建默认profile成功: ${realUsername}`)
       } catch (error) {
         Logger.error(`为用户 ${userId} 创建默认profile失败`, error)
       }
