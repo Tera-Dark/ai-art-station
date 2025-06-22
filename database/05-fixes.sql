@@ -88,6 +88,13 @@ SELECT
 FROM pg_policies 
 WHERE schemaname = 'public' AND tablename = 'follows';
 
+-- ====================================
+-- 修复作品表字段约束
+-- ====================================
+
+-- 修改prompt字段，允许为空（因为AI提示词是可选的）
+ALTER TABLE artworks ALTER COLUMN prompt DROP NOT NULL;
+
 -- 完成提示
 SELECT '🎉 强力修复完成！请刷新页面测试关注功能。' as message;
 

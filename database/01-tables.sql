@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS artworks (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     title TEXT NOT NULL,
     description TEXT,
-    prompt TEXT NOT NULL,
+    prompt TEXT,
     image_url TEXT NOT NULL,
     tags TEXT[] DEFAULT '{}',
     model TEXT,

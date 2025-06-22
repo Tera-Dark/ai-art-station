@@ -161,13 +161,12 @@ class ArtworkServiceImpl extends BaseService implements ArtworkService {
       Logger.info('开始创建作品')
 
       // 验证必要字段
-      if (
-        !artworkData.title ||
-        !artworkData.prompt ||
-        !artworkData.image_url ||
-        !artworkData.user_id
-      ) {
-        Logger.error('创建作品失败：缺少必要字段')
+      if (!artworkData.title || !artworkData.image_url || !artworkData.user_id) {
+        Logger.error('创建作品失败：缺少必要字段', {
+          title: !!artworkData.title,
+          image_url: !!artworkData.image_url,
+          user_id: !!artworkData.user_id,
+        })
         return null
       }
 
@@ -180,7 +179,7 @@ class ArtworkServiceImpl extends BaseService implements ArtworkService {
           .insert({
             title: artworkData.title,
             description: artworkData.description,
-            prompt: artworkData.prompt,
+            prompt: artworkData.prompt || '', // 提供默认值
             image_url: artworkData.image_url,
             tags: artworkData.tags || [],
             model: artworkData.model,
